@@ -5,64 +5,56 @@
   <title>Core/Accessory Lookup</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root{
-      --bg:#fff8f0; --card:#fff; --muted:#666; --line:#eee; --brand:#E97400;
-    }
+    :root{ --bg:#fff8f0; --card:#fff; --muted:#666; --line:#eee; --brand:#E97400; }
     *{box-sizing:border-box}
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--bg); color:#222; margin:0; }
-    header { padding:16px 20px; border-bottom:1px solid var(--line); }
-    h1 { margin:0; font-size:18px; }
-    .wrap { display:flex; gap:24px; padding:20px; max-width:1200px; margin:0 auto; }
-    .left { width:38%; max-width:520px; }
-    .right { flex:1; min-width:0; }
-    fieldset { border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; background:var(--card); }
-    legend { font-weight:600; padding:0 6px; }
-    label { display:block; font-weight:600; margin-top:8px; }
-    select, input[type="text"] {
-      width:100%; padding:12px; margin-top:6px;
-      border:1px solid #ddd; border-radius:10px; font-size:16px; /* avoid iOS zoom */
-      background:#fff;
-    }
-    .row { display:flex; gap:10px; flex-wrap:wrap; }
-    button {
-      padding:12px 14px; border:0; border-radius:10px; background:var(--brand); color:#fff; cursor:pointer; font-size:16px;
-    }
-    button.secondary { background:#e0e0e0; color:#222; }
-    button:disabled { opacity:.6; cursor:not-allowed; }
-    .error { color:#c62828; margin:8px 0; font-weight:600; }
-    .ok { color:#2e7d32; margin:8px 0; font-weight:600; }
-    .muted { color:var(--muted); font-size:12px; }
+    body{ font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:#222; margin:0; }
+    header{ padding:16px 20px; border-bottom:1px solid var(--line); }
+    h1{ margin:0; font-size:18px; }
+    .wrap{ display:flex; gap:24px; padding:20px; max-width:1200px; margin:0 auto; }
+    .left{ width:38%; max-width:520px; }
+    .right{ flex:1; min-width:0; }
+    fieldset{ border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; background:var(--card); }
+    legend{ font-weight:600; padding:0 6px; }
+    label{ display:block; font-weight:600; margin-top:8px; }
+    select,input[type="text"]{ width:100%; padding:12px; margin-top:6px; border:1px solid #ddd; border-radius:10px; font-size:16px; background:#fff; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; }
+    button{ padding:12px 14px; border:0; border-radius:10px; background:var(--brand); color:#fff; cursor:pointer; font-size:16px; }
+    button.secondary{ background:#e0e0e0; color:#222; }
+    button:disabled{ opacity:.6; cursor:not-allowed; }
+    .error{ color:#c62828; margin:8px 0; font-weight:600; }
+    .ok{ color:#2e7d32; margin:8px 0; font-weight:600; }
+    .muted{ color:var(--muted); font-size:12px; }
+    .subhead{ font-weight:700; margin:4px 0 8px; }
 
     /* Tables */
     .table-wrap{ width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-    table { width:100%; border-collapse:collapse; margin-top:10px; background:#fff; min-width:640px; }
-    th, td { border-bottom:1px solid var(--line); text-align:left; padding:10px; }
-    th { background:#fafafa; }
+    table{ width:100%; border-collapse:collapse; margin-top:10px; background:#fff; min-width:640px; }
+    th,td{ border-bottom:1px solid var(--line); text-align:left; padding:10px; }
+    th{ background:#fafafa; }
 
-    /* Breakpoints */
-    @media (max-width: 900px){
+    /* Layout breakpoints */
+    @media (max-width:900px){
       .wrap{ flex-direction:column; padding:12px; }
       .left{ width:100%; max-width:none; }
-      table { min-width:560px; }
+      table{ min-width:560px; }
     }
-    /* Stack rows for very small screens */
-    @media (max-width: 600px){
+    /* Stack table on very small screens */
+    @media (max-width:600px){
       .table-wrap{ overflow-x:visible; }
-      table.responsive { min-width:0; }
+      table.responsive{ min-width:0; }
       table.responsive thead{ display:none; }
-      table.responsive, table.responsive tbody, table.responsive tr, table.responsive td { display:block; width:100%; }
+      table.responsive, table.responsive tbody, table.responsive tr, table.responsive td{ display:block; width:100%; }
       table.responsive tr{ border:1px solid var(--line); border-radius:10px; margin-bottom:10px; background:#fff; }
-      table.responsive td{
-        display:flex; justify-content:space-between; gap:12px; padding:10px 12px;
-      }
-      table.responsive td::before{
-        content: attr(data-label);
-        font-weight:600;
-      }
+      table.responsive td{ display:flex; justify-content:space-between; gap:12px; padding:10px 12px; }
+      table.responsive td::before{ content:attr(data-label); font-weight:600; }
+      #backToTop{ display:inline-flex; }
+    }
+    /* Mobile-only floating button (hidden on desktop) */
+    #backToTop{
+      position:fixed; right:16px; bottom:16px; padding:12px 14px;
+      border-radius:999px; background:#000; color:#fff; border:0; display:none; z-index:999;
     }
   </style>
-
-  <!-- Set your Railway API base -->
   <script>
     window.API_BASE = "https://core-accessory-tool-production.up.railway.app";
   </script>
@@ -77,24 +69,16 @@
     <fieldset>
       <legend>Search by dropdown</legend>
       <label for="type">Type</label>
-      <select id="type">
-        <option value="">— Select Type —</option>
-      </select>
+      <select id="type"><option value="">— Select Type —</option></select>
 
       <label for="department">Category</label>
-      <select id="department">
-        <option value="">— Select Category —</option>
-      </select>
+      <select id="department"><option value="">— Select Category —</option></select>
 
       <label for="brand">Brand</label>
-      <select id="brand">
-        <option value="">— Select Brand —</option>
-      </select>
+      <select id="brand"><option value="">— Select Brand —</option></select>
 
       <label for="item_name">Item name</label>
-      <select id="item_name">
-        <option value="">— Select Item —</option>
-      </select>
+      <select id="item_name"><option value="">— Select Item —</option></select>
 
       <div class="row" style="margin-top:12px">
         <button id="btnDropdown">Search</button>
@@ -105,7 +89,7 @@
     <fieldset>
       <legend>Search by product page link</legend>
       <label for="product_link">URL</label>
-      <input id="product_link" type="text" placeholder="https://.../p/12345678 or ...?variant=12345678" />
+      <input id="product_link" type="text" placeholder="" />
       <div class="row" style="margin-top:12px">
         <button id="btnLink">Search</button>
         <button class="secondary" id="btnResetLink" type="button">Reset</button>
@@ -126,89 +110,122 @@
   </div>
 
   <div class="right">
-    <fieldset>
+    <fieldset id="results">
       <legend>Result</legend>
       <div id="resultBox" class="muted">No selection yet.</div>
+      <div id="relatedHeader" class="subhead" style="display:none;"></div>
       <div id="relatedBox"></div>
     </fieldset>
   </div>
 </div>
 
+<button id="backToTop" class="mobile-only" title="Back to Top">Back to Top</button>
+
 <script>
   const API_BASE = window.API_BASE;
-  const el = (id) => document.getElementById(id);
-  const $type = el("type"), $dept = el("department"), $brand = el("brand"), $name = el("item_name");
-  const $msg = el("msg"), $resultBox = el("resultBox"), $relatedBox = el("relatedBox");
+  const el = (id)=>document.getElementById(id);
+  const $type=el("type"), $dept=el("department"), $brand=el("brand"), $name=el("item_name");
+  const $msg=el("msg"), $resultBox=el("resultBox"), $relatedBox=el("relatedBox"), $relatedHeader=el("relatedHeader");
+  const $backTop = el("backToTop");
 
-  function typeLabel(code) { return code === "A" ? "Accessory" : "Core Item"; }
-  function setMsg(text, ok=false){ $msg.innerHTML = text ? `<div class="${ok?"ok":"error"}">${text}</div>` : ""; }
+  const isMobile = ()=> window.innerWidth <= 900;
+  const setMsg=(t,ok=false)=>{ $msg.innerHTML = t ? `<div class="${ok?"ok":"error"}">${t}</div>` : ""; };
 
-  async function fetchMeta() {
-    const params = new URLSearchParams();
-    if ($type.value) params.set("type", $type.value);
-    if ($dept.value) params.set("department", $dept.value);
-    if ($brand.value) params.set("brand", $brand.value);
-    const res = await fetch(`${API_BASE}/api/meta?` + params.toString());
-    if (!res.ok) throw new Error("meta failed");
+  const nanLike = (v)=>{
+    if (v === null || v === undefined) return true;
+    const s = String(v).trim().toLowerCase();
+    return s === "" || s === "nan" || s === "none" || s === "null";
+  };
+
+  async function fetchMeta(){
+    const p = new URLSearchParams();
+    if ($type.value) p.set("type",$type.value);
+    if ($dept.value) p.set("department",$dept.value);
+    if ($brand.value) p.set("brand",$brand.value);
+    const res = await fetch(`${API_BASE}/api/meta?`+p.toString());
+    if(!res.ok) throw new Error("meta failed");
     return res.json();
   }
 
-  function fillSelect($sel, items, formatter=(x)=>x, value=(x)=>x, keepValue=false){
-    const current = keepValue ? $sel.value : "";
+  function fillSelect($sel, items, fmt=(x)=>x, val=(x)=>x, keep=false){
+    const cur = keep ? $sel.value : "";
     $sel.innerHTML = "";
     const opt0 = document.createElement("option");
-    opt0.value = ""; opt0.textContent = "— Select —";
-    $sel.appendChild(opt0);
-    items.forEach(i => {
-      const opt = document.createElement("option");
-      opt.value = value(i); opt.textContent = formatter(i);
-      $sel.appendChild(opt);
+    opt0.value=""; opt0.textContent="— Select —"; $sel.appendChild(opt0);
+    items.forEach(i=>{
+      const o=document.createElement("option"); o.value=val(i); o.textContent=fmt(i); $sel.appendChild(o);
     });
-    if (keepValue && items.includes(current)) $sel.value = current;
+    if(keep && items.includes(cur)) $sel.value=cur;
   }
 
   async function refreshDropdowns(){
     try{
       const meta = await fetchMeta();
-      fillSelect($type, meta.types, t=>typeLabel(t), t=>t, true);
+      fillSelect($type, meta.types, t=> t==="A"?"Accessory":"Core Item", t=>t, true);
       fillSelect($dept, meta.departments, d=>d, d=>d, true);
       fillSelect($brand, meta.brands, b=>b, b=>b, true);
       fillSelect($name, meta.item_names, n=>n, n=>n);
     }catch(e){ setMsg("Failed to load dropdowns. Please retry."); console.error(e); }
   }
 
-  function renderMainResult(r){
-    const link = r.product_link ? `<a href="${r.product_link}" target="_blank" rel="noopener">view</a>` : "—";
-    const rows = `
-      <tr><th>Category</th><td>${r.department || "—"}</td></tr>
-      <tr><th>Brand</th><td>${r.brand || "—"}</td></tr>
-      <tr><th>Item Name</th><td>${r.item_name || "—"}</td></tr>
-      <tr><th>Type</th><td>${r.type_label}</td></tr>
-      ${r.rrp ? `<tr><th>RRP</th><td>${r.rrp}</td></tr>` : ""}
-      <tr><th>Product</th><td>${link}</td></tr>
-      <tr><th>SKU</th><td><code>${r.item}</code></td></tr>
-    `;
-    $resultBox.innerHTML = `<div class="table-wrap"><table><tbody>${rows}</tbody></table></div>`;
+  function fortressUrlFromSku(sku){
+    return sku && /^\d{8}$/.test(sku) ? `https://www.fortress.com.hk/${sku}` : "";
   }
 
-  function renderRelated(items){
-    if (!items.length){ $relatedBox.innerHTML = "<div class='muted'>No related items found.</div>"; return; }
-    const rows = items.map(x=>{
-      const link = x.ProductLink ? `<a href="${x.ProductLink}" target="_blank" rel="noopener">view</a>` : "—";
+  function renderMainResult(r){
+    // Header
+    let html = `<div class="subhead">You are currently searching for</div>`;
+    // Build rows, skip any with nan-like values
+    const rows = [];
+    const pushRow = (label, value) => { if(!nanLike(value)) rows.push(`<tr><th>${label}</th><td>${value}</td></tr>`); };
+
+    pushRow("Category", r.department);
+    pushRow("Brand", r.brand);
+    pushRow("Item Name", r.item_name);
+    pushRow("Type", r.type_label);
+    if(!nanLike(r.rrp)) pushRow("RRP", r.rrp);
+
+    const productUrl = fortressUrlFromSku(r.item);
+    if(productUrl) pushRow("Product Link", `<a href="${productUrl}" target="_blank" rel="noopener">View</a>`);
+
+    html += `<div class="table-wrap"><table><tbody>${rows.join("") || `<tr><td class="muted">No details available.</td></tr>`}</tbody></table></div>`;
+    $resultBox.innerHTML = html;
+  }
+
+  function renderRelated(items, currentType){
+    // Filter out rows that have any nan-like critical fields
+    const clean = items.filter(x=>{
+      const fields = [x.Department, x.Brand, x["Item Name"]];
+      return !fields.some(nanLike);
+    });
+
+    if (!clean.length){
+      $relatedHeader.style.display = "none";
+      $relatedBox.innerHTML = "<div class='muted'>No related items found.</div>";
+      return;
+    }
+
+    const headerText = currentType === "Core Item" ? "The related accessories:" : "The related core items:";
+    $relatedHeader.textContent = headerText;
+    $relatedHeader.style.display = "block";
+
+    const rows = clean.map(x=>{
+      const url = fortressUrlFromSku(x.Item);
+      const link = url ? `<a href="${url}" target="_blank" rel="noopener">View</a>` : "—";
       return `<tr>
         <td data-label="Category">${x.Department || ""}</td>
         <td data-label="Brand">${x.Brand || ""}</td>
         <td data-label="Item Name">${x["Item Name"] || ""}</td>
-        <td data-label="RRP">${x.RRP ?? ""}</td>
-        <td data-label="Product">${link}</td>
-        <td data-label="SKU"><code>${x.Item || ""}</code></td>
+        <td data-label="RRP">${nanLike(x.RRP) ? "" : x.RRP}</td>
+        <td data-label="Product Link">${link}</td>
       </tr>`;
     }).join("");
+
     $relatedBox.innerHTML = `
       <div class="table-wrap">
         <table class="responsive">
           <thead>
-            <tr><th>Category</th><th>Brand</th><th>Item Name</th><th>RRP</th><th>Product</th><th>SKU</th></tr>
+            <tr><th>Category</th><th>Brand</th><th>Item Name</th><th>RRP</th><th>Product Link</th></tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
@@ -216,17 +233,22 @@
   }
 
   async function doSearch(payload){
-    setMsg(""); $resultBox.textContent = "Searching…"; $relatedBox.innerHTML = "";
+    setMsg(""); $resultBox.textContent="Searching…"; $relatedBox.innerHTML=""; $relatedHeader.style.display="none";
     try{
       const res = await fetch(`${API_BASE}/api/search`, {
-        method: "POST", headers: {"Content-Type":"application/json"},
-        body: JSON.stringify(payload)
+        method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)
       });
       const data = await res.json();
-      if (!res.ok){ $resultBox.innerHTML = ""; setMsg(data.error || "Search failed."); return; }
+      if(!res.ok){ $resultBox.innerHTML=""; setMsg(data.error||"Search failed."); return; }
       renderMainResult(data.result);
-      renderRelated(data.related_items || []);
-    }catch(e){ $resultBox.innerHTML = ""; setMsg("Can’t reach backend. Check API_BASE/CORS."); console.error(e); }
+      renderRelated(data.related_items||[], data.result.type_label);
+
+      // After search on mobile, scroll to results and show Back-to-Top
+      if (isMobile()){
+        document.getElementById("results").scrollIntoView({behavior:"smooth", block:"start"});
+        $backTop.style.display = "inline-flex";
+      }
+    }catch(e){ $resultBox.innerHTML=""; setMsg("Can’t reach backend. Check API_BASE/CORS."); console.error(e); }
   }
 
   // Events
@@ -235,19 +257,19 @@
   $brand.addEventListener("change", refreshDropdowns);
 
   document.getElementById("btnDropdown").addEventListener("click", async ()=>{
-    const v = $name.value.trim();
-    if (!v) return setMsg("Please select the product.");
-    await doSearch({ action: "dropdown", selected_item_name: v });
+    const v = $name.value.trim(); if(!v) return setMsg("Please select the product.");
+    await doSearch({ action:"dropdown", selected_item_name:v });
   });
   document.getElementById("btnResetDropdown").addEventListener("click", async ()=>{
     $type.value=""; $dept.value=""; $brand.value=""; $name.value="";
-    await refreshDropdowns(); setMsg(""); $resultBox.textContent="No selection yet."; $relatedBox.innerHTML="";
+    await refreshDropdowns(); setMsg(""); $resultBox.textContent="No selection yet."; $relatedBox.innerHTML=""; $relatedHeader.style.display="none";
+    $backTop.style.display = "none";
   });
 
   document.getElementById("btnLink").addEventListener("click", async ()=>{
     const url = document.getElementById("product_link").value.trim();
-    if (!url) return setMsg("Please paste a product link.");
-    await doSearch({ action: "link", product_link: url });
+    if(!url) return setMsg("Please paste a product link.");
+    await doSearch({ action:"link", product_link:url });
   });
   document.getElementById("btnResetLink").addEventListener("click", ()=>{
     document.getElementById("product_link").value=""; setMsg("");
@@ -255,12 +277,14 @@
 
   document.getElementById("btnNumber").addEventListener("click", async ()=>{
     const v = document.getElementById("product_number").value.trim();
-    if (!/^\d{8}$/.test(v)) return setMsg("Please enter an 8-digit product number.");
-    await doSearch({ action: "number", product_number: v });
+    if(!/^\d{8}$/.test(v)) return setMsg("Please enter an 8-digit product number.");
+    await doSearch({ action:"number", product_number:v });
   });
   document.getElementById("btnResetNumber").addEventListener("click", ()=>{
     document.getElementById("product_number").value=""; setMsg("");
   });
+
+  $backTop.addEventListener("click", ()=>{ window.scrollTo({top:0, behavior:"smooth"}); });
 
   // init
   refreshDropdowns();
