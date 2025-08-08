@@ -5,28 +5,67 @@
   <title>Core/Accessory Lookup</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, Arial, sans-serif; background: #fff8f0; color: #222; margin: 0; }
-    header { padding: 16px 20px; border-bottom: 1px solid #eee; }
-    h1 { margin: 0; font-size: 18px; }
-    .wrap { display: flex; gap: 24px; padding: 20px; }
-    .left { width: 38%; max-width: 520px; }
-    .right { flex: 1; }
-    fieldset { border: 1px solid #eee; border-radius: 12px; padding: 16px; margin-bottom: 16px; background: #fff; }
-    legend { font-weight: 600; padding: 0 6px; }
-    label { display: block; font-weight: 600; margin-top: 8px; }
-    select, input[type="text"] { width: 100%; padding: 10px; margin-top: 6px; border: 1px solid #ddd; border-radius: 10px; }
-    .row { display: flex; gap: 10px; flex-wrap: wrap; }
-    button { padding: 10px 14px; border: 0; border-radius: 10px; background: #E97400; color: #fff; cursor: pointer; }
-    button.secondary { background: #e0e0e0; color: #222; }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    .error { color: #c62828; margin: 8px 0; font-weight: 600; }
-    .ok { color: #2e7d32; margin: 8px 0; font-weight: 600; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #fff; }
-    th, td { border-bottom: 1px solid #eee; text-align: left; padding: 10px; }
-    th { background: #fafafa; }
-    .muted { color: #666; font-size: 12px; }
-    .caps { font-variant: all-small-caps; letter-spacing: .5px; }
+    :root{
+      --bg:#fff8f0; --card:#fff; --muted:#666; --line:#eee; --brand:#E97400;
+    }
+    *{box-sizing:border-box}
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--bg); color:#222; margin:0; }
+    header { padding:16px 20px; border-bottom:1px solid var(--line); }
+    h1 { margin:0; font-size:18px; }
+    .wrap { display:flex; gap:24px; padding:20px; max-width:1200px; margin:0 auto; }
+    .left { width:38%; max-width:520px; }
+    .right { flex:1; min-width:0; }
+    fieldset { border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; background:var(--card); }
+    legend { font-weight:600; padding:0 6px; }
+    label { display:block; font-weight:600; margin-top:8px; }
+    select, input[type="text"] {
+      width:100%; padding:12px; margin-top:6px;
+      border:1px solid #ddd; border-radius:10px; font-size:16px; /* avoid iOS zoom */
+      background:#fff;
+    }
+    .row { display:flex; gap:10px; flex-wrap:wrap; }
+    button {
+      padding:12px 14px; border:0; border-radius:10px; background:var(--brand); color:#fff; cursor:pointer; font-size:16px;
+    }
+    button.secondary { background:#e0e0e0; color:#222; }
+    button:disabled { opacity:.6; cursor:not-allowed; }
+    .error { color:#c62828; margin:8px 0; font-weight:600; }
+    .ok { color:#2e7d32; margin:8px 0; font-weight:600; }
+    .muted { color:var(--muted); font-size:12px; }
+
+    /* Tables */
+    .table-wrap{ width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; background:#fff; min-width:640px; }
+    th, td { border-bottom:1px solid var(--line); text-align:left; padding:10px; }
+    th { background:#fafafa; }
+
+    /* Breakpoints */
+    @media (max-width: 900px){
+      .wrap{ flex-direction:column; padding:12px; }
+      .left{ width:100%; max-width:none; }
+      table { min-width:560px; }
+    }
+    /* Stack rows for very small screens */
+    @media (max-width: 600px){
+      .table-wrap{ overflow-x:visible; }
+      table.responsive { min-width:0; }
+      table.responsive thead{ display:none; }
+      table.responsive, table.responsive tbody, table.responsive tr, table.responsive td { display:block; width:100%; }
+      table.responsive tr{ border:1px solid var(--line); border-radius:10px; margin-bottom:10px; background:#fff; }
+      table.responsive td{
+        display:flex; justify-content:space-between; gap:12px; padding:10px 12px;
+      }
+      table.responsive td::before{
+        content: attr(data-label);
+        font-weight:600;
+      }
+    }
   </style>
+
+  <!-- Set your Railway API base -->
+  <script>
+    window.API_BASE = "https://core-accessory-tool-production.up.railway.app";
+  </script>
 </head>
 <body>
 <header>
@@ -71,22 +110,17 @@
         <button id="btnLink">Search</button>
         <button class="secondary" id="btnResetLink" type="button">Reset</button>
       </div>
-      <div class="muted">Understands patterns: <span class="caps">variant=########</span>, <span class="caps">/p/########</span>, <span class="caps">/p/BP_########</span></div>
     </fieldset>
 
     <fieldset>
       <legend>Search by product number</legend>
-      <label for="product_number">8-digit SKU</label>
-      <input id="product_number" type="text" placeholder="e.g. 00123456" maxlength="8" />
+      <label for="product_number">SKU</label>
+      <input id="product_number" type="text" placeholder="e.g. 12345678" maxlength="8" />
       <div class="row" style="margin-top:12px">
         <button id="btnNumber">Search</button>
         <button class="secondary" id="btnResetNumber" type="button">Reset</button>
       </div>
     </fieldset>
-
-    <div class="row" style="margin-top:8px">
-      <button class="secondary" id="btnRefresh" type="button">Refresh data cache</button>
-    </div>
 
     <div id="msg"></div>
   </div>
@@ -101,38 +135,25 @@
 </div>
 
 <script>
-  // Set this to your Railway URL, or define window.API_BASE before this script.
-  window.API_BASE = "https://core-accessory-tool-production.up.railway.app";
   const API_BASE = window.API_BASE;
-
   const el = (id) => document.getElementById(id);
-  const $type = el("type");
-  const $dept = el("department");
-  const $brand = el("brand");
-  const $name = el("item_name");
-  const $msg = el("msg");
-  const $resultBox = el("resultBox");
-  const $relatedBox = el("relatedBox");
+  const $type = el("type"), $dept = el("department"), $brand = el("brand"), $name = el("item_name");
+  const $msg = el("msg"), $resultBox = el("resultBox"), $relatedBox = el("relatedBox");
 
   function typeLabel(code) { return code === "A" ? "Accessory" : "Core Item"; }
-
-  function setMsg(text, ok=false) {
-    if (!text) { $msg.innerHTML = ""; return; }
-    $msg.innerHTML = `<div class="${ok ? "ok" : "error"}">${text}</div>`;
-  }
+  function setMsg(text, ok=false){ $msg.innerHTML = text ? `<div class="${ok?"ok":"error"}">${text}</div>` : ""; }
 
   async function fetchMeta() {
     const params = new URLSearchParams();
     if ($type.value) params.set("type", $type.value);
     if ($dept.value) params.set("department", $dept.value);
     if ($brand.value) params.set("brand", $brand.value);
-
     const res = await fetch(`${API_BASE}/api/meta?` + params.toString());
     if (!res.ok) throw new Error("meta failed");
     return res.json();
   }
 
-  function fillSelect($sel, items, formatter = (x)=>x, value = (x)=>x, keepValue=false) {
+  function fillSelect($sel, items, formatter=(x)=>x, value=(x)=>x, keepValue=false){
     const current = keepValue ? $sel.value : "";
     $sel.innerHTML = "";
     const opt0 = document.createElement("option");
@@ -146,58 +167,66 @@
     if (keepValue && items.includes(current)) $sel.value = current;
   }
 
-  async function refreshDropdowns() {
-    try {
+  async function refreshDropdowns(){
+    try{
       const meta = await fetchMeta();
-      fillSelect($type, meta.types, t => typeLabel(t), t=>t, true);
-      fillSelect($dept, meta.departments, d => d, d=>d, true);
-      fillSelect($brand, meta.brands, b => b, b=>b, true);
-      fillSelect($name, meta.item_names, n => n, n=>n);
-    } catch (e) {
-      setMsg("Failed to load dropdowns. Please retry.");
-      console.error(e);
-    }
+      fillSelect($type, meta.types, t=>typeLabel(t), t=>t, true);
+      fillSelect($dept, meta.departments, d=>d, d=>d, true);
+      fillSelect($brand, meta.brands, b=>b, b=>b, true);
+      fillSelect($name, meta.item_names, n=>n, n=>n);
+    }catch(e){ setMsg("Failed to load dropdowns. Please retry."); console.error(e); }
   }
 
-  async function doSearch(payload) {
-    setMsg("");
-    $resultBox.textContent = "Searching…";
-    $relatedBox.innerHTML = "";
-    const res = await fetch(`${API_BASE}/api/search`, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      $resultBox.innerHTML = "";
-      setMsg(data.error || "Search failed.");
-      return;
-    }
-    const r = data.result;
-    $resultBox.innerHTML = `
-      <div><strong>${r.item_name || "(Unnamed)"}</strong></div>
-      <div class="muted">${r.brand || "—"} • ${r.department || "—"} • ${r.type_label} • SKU ${r.item}</div>
-      ${r.rrp ? `<div class="muted">RRP: ${r.rrp}</div>` : "" }
+  function renderMainResult(r){
+    const link = r.product_link ? `<a href="${r.product_link}" target="_blank" rel="noopener">view</a>` : "—";
+    const rows = `
+      <tr><th>Category</th><td>${r.department || "—"}</td></tr>
+      <tr><th>Brand</th><td>${r.brand || "—"}</td></tr>
+      <tr><th>Item Name</th><td>${r.item_name || "—"}</td></tr>
+      <tr><th>Type</th><td>${r.type_label}</td></tr>
+      ${r.rrp ? `<tr><th>RRP</th><td>${r.rrp}</td></tr>` : ""}
+      <tr><th>Product</th><td>${link}</td></tr>
+      <tr><th>SKU</th><td><code>${r.item}</code></td></tr>
     `;
-    renderRelated(data.related_items || []);
+    $resultBox.innerHTML = `<div class="table-wrap"><table><tbody>${rows}</tbody></table></div>`;
   }
 
-  function renderRelated(items) {
-    if (!items.length) { $relatedBox.innerHTML = "<div class='muted'>No related items found.</div>"; return; }
-    const rows = items.map(x => `
-      <tr>
-        <td>${x.Department || ""}</td>
-        <td>${x.Brand || ""}</td>
-        <td>${x["Item Name"] || ""}</td>
-        <td>${x.RRP ?? ""}</td>
-        <td><code>${x.Item || ""}</code></td>
-      </tr>`).join("");
+  function renderRelated(items){
+    if (!items.length){ $relatedBox.innerHTML = "<div class='muted'>No related items found.</div>"; return; }
+    const rows = items.map(x=>{
+      const link = x.ProductLink ? `<a href="${x.ProductLink}" target="_blank" rel="noopener">view</a>` : "—";
+      return `<tr>
+        <td data-label="Category">${x.Department || ""}</td>
+        <td data-label="Brand">${x.Brand || ""}</td>
+        <td data-label="Item Name">${x["Item Name"] || ""}</td>
+        <td data-label="RRP">${x.RRP ?? ""}</td>
+        <td data-label="Product">${link}</td>
+        <td data-label="SKU"><code>${x.Item || ""}</code></td>
+      </tr>`;
+    }).join("");
     $relatedBox.innerHTML = `
-      <table>
-        <thead><tr><th>Category</th><th>Brand</th><th>Item Name</th><th>RRP</th><th>SKU</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`;
+      <div class="table-wrap">
+        <table class="responsive">
+          <thead>
+            <tr><th>Category</th><th>Brand</th><th>Item Name</th><th>RRP</th><th>Product</th><th>SKU</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  async function doSearch(payload){
+    setMsg(""); $resultBox.textContent = "Searching…"; $relatedBox.innerHTML = "";
+    try{
+      const res = await fetch(`${API_BASE}/api/search`, {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok){ $resultBox.innerHTML = ""; setMsg(data.error || "Search failed."); return; }
+      renderMainResult(data.result);
+      renderRelated(data.related_items || []);
+    }catch(e){ $resultBox.innerHTML = ""; setMsg("Can’t reach backend. Check API_BASE/CORS."); console.error(e); }
   }
 
   // Events
@@ -205,42 +234,32 @@
   $dept.addEventListener("change", refreshDropdowns);
   $brand.addEventListener("change", refreshDropdowns);
 
-  document.getElementById("btnDropdown").addEventListener("click", async () => {
+  document.getElementById("btnDropdown").addEventListener("click", async ()=>{
     const v = $name.value.trim();
     if (!v) return setMsg("Please select the product.");
     await doSearch({ action: "dropdown", selected_item_name: v });
   });
-
-  document.getElementById("btnResetDropdown").addEventListener("click", async () => {
-    $type.value = ""; $dept.value = ""; $brand.value = ""; $name.value = "";
-    await refreshDropdowns(); setMsg("");
-    $resultBox.textContent = "No selection yet."; $relatedBox.innerHTML = "";
+  document.getElementById("btnResetDropdown").addEventListener("click", async ()=>{
+    $type.value=""; $dept.value=""; $brand.value=""; $name.value="";
+    await refreshDropdowns(); setMsg(""); $resultBox.textContent="No selection yet."; $relatedBox.innerHTML="";
   });
 
-  document.getElementById("btnLink").addEventListener("click", async () => {
+  document.getElementById("btnLink").addEventListener("click", async ()=>{
     const url = document.getElementById("product_link").value.trim();
     if (!url) return setMsg("Please paste a product link.");
     await doSearch({ action: "link", product_link: url });
   });
-  document.getElementById("btnResetLink").addEventListener("click", () => {
-    document.getElementById("product_link").value = ""; setMsg("");
+  document.getElementById("btnResetLink").addEventListener("click", ()=>{
+    document.getElementById("product_link").value=""; setMsg("");
   });
 
-  document.getElementById("btnNumber").addEventListener("click", async () => {
+  document.getElementById("btnNumber").addEventListener("click", async ()=>{
     const v = document.getElementById("product_number").value.trim();
     if (!/^\d{8}$/.test(v)) return setMsg("Please enter an 8-digit product number.");
     await doSearch({ action: "number", product_number: v });
   });
-  document.getElementById("btnResetNumber").addEventListener("click", () => {
-    document.getElementById("product_number").value = ""; setMsg("");
-  });
-
-  document.getElementById("btnRefresh").addEventListener("click", async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/refresh`, { method: "POST" });
-      if (res.ok) { setMsg("Cache refreshed.", true); await refreshDropdowns(); }
-      else setMsg("Failed to refresh cache.");
-    } catch (e) { setMsg("Failed to refresh cache."); }
+  document.getElementById("btnResetNumber").addEventListener("click", ()=>{
+    document.getElementById("product_number").value=""; setMsg("");
   });
 
   // init
