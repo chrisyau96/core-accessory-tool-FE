@@ -102,7 +102,8 @@
 
 <script>
   // Set this to your Railway URL, or define window.API_BASE before this script.
-  const API_BASE = window.API_BASE || "https://YOUR-RAILWAY-APP.up.railway.app";
+  window.API_BASE = "https://core-accessory-tool-production.up.railway.app";
+  const API_BASE = window.API_BASE;
 
   const el = (id) => document.getElementById(id);
   const $type = el("type");
