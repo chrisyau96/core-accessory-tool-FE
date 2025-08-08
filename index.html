@@ -1,148 +1,249 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Find the Accessory/ Core item</title>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #fff8f0; color: #333; }
-        h1 { color: black; }
-        label { font-weight: bold; }
-        .error { color: red; }
-        .refreshed { color: green; }
-        .container { display: flex; }
-        .left-panel { width: 40%; padding-right: 20px; border-right: 2px solid #ccc; }
-        .right-panel { width: 60%; padding-left: 20px; }
-        select, input[type="text"] { width: 300px; padding: 5px; margin: 5px 0; }
-        .button { background-color: #E97400; color: white; padding: 8px 12px; border: none; cursor: pointer; margin-right: 10px; }
-        .button:hover { background-color: #cc5f00; }
-        .reset-btn { background-color: grey; color: white; padding: 8px 12px; border: none; cursor: pointer; }
-        .reset-btn:hover { background-color: #666; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid white; padding: 8px; text-align: left; }
-        th { background-color: #E97400; color: white; }
-    </style>
+  <meta charset="utf-8" />
+  <title>Core/Accessory Lookup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; background: #fff8f0; color: #222; margin: 0; }
+    header { padding: 16px 20px; border-bottom: 1px solid #eee; }
+    h1 { margin: 0; font-size: 18px; }
+    .wrap { display: flex; gap: 24px; padding: 20px; }
+    .left { width: 38%; max-width: 520px; }
+    .right { flex: 1; }
+    fieldset { border: 1px solid #eee; border-radius: 12px; padding: 16px; margin-bottom: 16px; background: #fff; }
+    legend { font-weight: 600; padding: 0 6px; }
+    label { display: block; font-weight: 600; margin-top: 8px; }
+    select, input[type="text"] { width: 100%; padding: 10px; margin-top: 6px; border: 1px solid #ddd; border-radius: 10px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    button { padding: 10px 14px; border: 0; border-radius: 10px; background: #E97400; color: #fff; cursor: pointer; }
+    button.secondary { background: #e0e0e0; color: #222; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .error { color: #c62828; margin: 8px 0; font-weight: 600; }
+    .ok { color: #2e7d32; margin: 8px 0; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #fff; }
+    th, td { border-bottom: 1px solid #eee; text-align: left; padding: 10px; }
+    th { background: #fafafa; }
+    .muted { color: #666; font-size: 12px; }
+    .caps { font-variant: all-small-caps; letter-spacing: .5px; }
+  </style>
 </head>
 <body>
-    <h1>Find the Accessory/ Core item</h1>
-    <div class="container">
-        <div class="left-panel">
-            <form method="post">
-                <p>Please select the core item/ accessory</p>
-                <label>Type:</label><br>
-                <select name="type" onchange="this.form.submit()">
-                    <option value="">--Select Type--</option>
-                    {% for t in types %}
-                        <option value="{{ t }}" {% if t == selected_type %}selected{% endif %}>{{ "Accessory" if t == "A" else "Core Item" }}</option>
-                    {% endfor %}
-                </select><br>
+<header>
+  <h1>Find the Accessory / Core Item</h1>
+</header>
 
-                <label>Category:</label><br>
-                <select name="department" onchange="this.form.submit()">
-                    <option value="">--Select Category--</option>
-                    {% for d in departments %}
-                        <option value="{{ d }}" {% if d == selected_department %}selected{% endif %}>{{ d }}</option>
-                    {% endfor %}
-                </select><br>
+<div class="wrap">
+  <div class="left">
+    <fieldset>
+      <legend>Search by dropdown</legend>
+      <label for="type">Type</label>
+      <select id="type">
+        <option value="">— Select Type —</option>
+      </select>
 
-                <label>Brand:</label><br>
-                <select name="brand" onchange="this.form.submit()">
-                    <option value="">--Select Brand--</option>
-                    {% for b in brands %}
-                        <option value="{{ b }}" {% if b == selected_brand %}selected{% endif %}>{{ b }}</option>
-                    {% endfor %}
-                </select><br>
+      <label for="department">Category</label>
+      <select id="department">
+        <option value="">— Select Category —</option>
+      </select>
 
-                <label>Item Name:</label><br>
-                <select name="item_name">
-                    <option value="">--Select Item Name--</option>
-                    {% for name in item_names %}
-                        <option value="{{ name }}" {% if name == selected_item_name %}selected{% endif %}>{{ name }}</option>
-                    {% endfor %}
-                </select><br>
+      <label for="brand">Brand</label>
+      <select id="brand">
+        <option value="">— Select Brand —</option>
+      </select>
 
-                <button class="button" name="action" value="search_dropdown">Search</button>
-                <button class="reset-btn" name="action" value="reset_dropdown">Reset</button>
-                {% if refreshed and action == "reset_dropdown" %}
-                    <p class="refreshed">Refreshed</p>
-                {% endif %}
-                {% if error and action == "search_dropdown" %}
-                    <p class="error">{{ error }}</p>
-                {% endif %}
+      <label for="item_name">Item name</label>
+      <select id="item_name">
+        <option value="">— Select Item —</option>
+      </select>
 
-                <hr>
-                <p>OR please paste the product link</p>
-                <input type="text" name="product_link" value="{{ product_link }}" placeholder="Full Product Link"><br>
-                <button class="button" name="action" value="search_link">Search</button>
-                <button class="reset-btn" name="action" value="reset_link">Reset</button>
-                {% if refreshed and action == "reset_link" %}
-                    <p class="refreshed">Refreshed</p>
-                {% endif %}
-                {% if error and action == "search_link" %}
-                    <p class="error">{{ error }}</p>
-                {% endif %}
+      <div class="row" style="margin-top:12px">
+        <button id="btnDropdown">Search</button>
+        <button class="secondary" id="btnResetDropdown" type="button">Reset</button>
+      </div>
+    </fieldset>
 
-                <hr>
-                <p>OR please enter the product number</p>
-                <input type="text" name="product_number" value="{{ product_number }}" placeholder="Product Number (8 digits)"><br>
-                <button class="button" name="action" value="search_number">Search</button>
-                <button class="reset-btn" name="action" value="reset_number">Reset</button>
-                {% if refreshed and action == "reset_number" %}
-                    <p class="refreshed">Refreshed</p>
-                {% endif %}
-                {% if error and action == "search_number" %}
-                    <p class="error">{{ error }}</p>
-                {% endif %}
-            </form>
-        </div>
-        <div class="right-panel">
-            {% if result %}
-                <h2>You are searching: {{ result.Brand }} {{ result["Item Name"] }} ({{ result.Type }})</h2>
-                <h3>
-                    {% if result["Item Type"] == "C" %}
-                        Related Accessories
-                    {% else %}
-                        Related Core Items
-                    {% endif %}
-                </h3>
-                <table>
-                    <tr><th>Category</th><th>Brand</th><th>Item Name</th><th>RRP</th><th>Product Link</th></tr>
-                    {% for item in related_items %}
-                        <tr>
-                            <td>{{ item["Department"] }}</td>
-                            <td>{{ item["Brand"] }}</td>
-                            <td>{{ item["Item Name"] }}</td>
-                            <td>HK${{ item["RRP"] | int }}</td>
-                            <td><a href="https://fortress.com.hk/p/{{ item['Item'] }}" target="_blank">view</a></td>
-                        </tr>
-                    {% endfor %}
-                </table>
-            {% endif %}
-        </div>
+    <fieldset>
+      <legend>Search by product page link</legend>
+      <label for="product_link">URL</label>
+      <input id="product_link" type="text" placeholder="https://.../p/12345678 or ...?variant=12345678" />
+      <div class="row" style="margin-top:12px">
+        <button id="btnLink">Search</button>
+        <button class="secondary" id="btnResetLink" type="button">Reset</button>
+      </div>
+      <div class="muted">Understands patterns: <span class="caps">variant=########</span>, <span class="caps">/p/########</span>, <span class="caps">/p/BP_########</span></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Search by product number</legend>
+      <label for="product_number">8-digit SKU</label>
+      <input id="product_number" type="text" placeholder="e.g. 00123456" maxlength="8" />
+      <div class="row" style="margin-top:12px">
+        <button id="btnNumber">Search</button>
+        <button class="secondary" id="btnResetNumber" type="button">Reset</button>
+      </div>
+    </fieldset>
+
+    <div class="row" style="margin-top:8px">
+      <button class="secondary" id="btnRefresh" type="button">Refresh data cache</button>
     </div>
 
+    <div id="msg"></div>
+  </div>
+
+  <div class="right">
+    <fieldset>
+      <legend>Result</legend>
+      <div id="resultBox" class="muted">No selection yet.</div>
+      <div id="relatedBox"></div>
+    </fieldset>
+  </div>
+</div>
+
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-  const form = document.querySelector("form");
-  if (form) {
-    form.addEventListener("submit", function(e) {
-      e.preventDefault();
-      
-fetch("https://core-accessory-tool-production.up.railway.app/", {
-  method: "POST",
-  body: new FormData(this)
-})
+  // Set this to your Railway URL, or define window.API_BASE before this script.
+  const API_BASE = window.API_BASE || "https://YOUR-RAILWAY-APP.up.railway.app";
 
-      .then(response => response.text())
-      .then(html => {
-        document.body.innerHTML = html;
-      })
-      .catch(error => {
-        console.error("Error:", error);
-        alert("Something went wrong. Please try again.");
-      });
-    });
+  const el = (id) => document.getElementById(id);
+  const $type = el("type");
+  const $dept = el("department");
+  const $brand = el("brand");
+  const $name = el("item_name");
+  const $msg = el("msg");
+  const $resultBox = el("resultBox");
+  const $relatedBox = el("relatedBox");
+
+  function typeLabel(code) { return code === "A" ? "Accessory" : "Core Item"; }
+
+  function setMsg(text, ok=false) {
+    if (!text) { $msg.innerHTML = ""; return; }
+    $msg.innerHTML = `<div class="${ok ? "ok" : "error"}">${text}</div>`;
   }
-});
-</script>
 
+  async function fetchMeta() {
+    const params = new URLSearchParams();
+    if ($type.value) params.set("type", $type.value);
+    if ($dept.value) params.set("department", $dept.value);
+    if ($brand.value) params.set("brand", $brand.value);
+
+    const res = await fetch(`${API_BASE}/api/meta?` + params.toString());
+    if (!res.ok) throw new Error("meta failed");
+    return res.json();
+  }
+
+  function fillSelect($sel, items, formatter = (x)=>x, value = (x)=>x, keepValue=false) {
+    const current = keepValue ? $sel.value : "";
+    $sel.innerHTML = "";
+    const opt0 = document.createElement("option");
+    opt0.value = ""; opt0.textContent = "— Select —";
+    $sel.appendChild(opt0);
+    items.forEach(i => {
+      const opt = document.createElement("option");
+      opt.value = value(i); opt.textContent = formatter(i);
+      $sel.appendChild(opt);
+    });
+    if (keepValue && items.includes(current)) $sel.value = current;
+  }
+
+  async function refreshDropdowns() {
+    try {
+      const meta = await fetchMeta();
+      fillSelect($type, meta.types, t => typeLabel(t), t=>t, true);
+      fillSelect($dept, meta.departments, d => d, d=>d, true);
+      fillSelect($brand, meta.brands, b => b, b=>b, true);
+      fillSelect($name, meta.item_names, n => n, n=>n);
+    } catch (e) {
+      setMsg("Failed to load dropdowns. Please retry.");
+      console.error(e);
+    }
+  }
+
+  async function doSearch(payload) {
+    setMsg("");
+    $resultBox.textContent = "Searching…";
+    $relatedBox.innerHTML = "";
+    const res = await fetch(`${API_BASE}/api/search`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      $resultBox.innerHTML = "";
+      setMsg(data.error || "Search failed.");
+      return;
+    }
+    const r = data.result;
+    $resultBox.innerHTML = `
+      <div><strong>${r.item_name || "(Unnamed)"}</strong></div>
+      <div class="muted">${r.brand || "—"} • ${r.department || "—"} • ${r.type_label} • SKU ${r.item}</div>
+      ${r.rrp ? `<div class="muted">RRP: ${r.rrp}</div>` : "" }
+    `;
+    renderRelated(data.related_items || []);
+  }
+
+  function renderRelated(items) {
+    if (!items.length) { $relatedBox.innerHTML = "<div class='muted'>No related items found.</div>"; return; }
+    const rows = items.map(x => `
+      <tr>
+        <td>${x.Department || ""}</td>
+        <td>${x.Brand || ""}</td>
+        <td>${x["Item Name"] || ""}</td>
+        <td>${x.RRP ?? ""}</td>
+        <td><code>${x.Item || ""}</code></td>
+      </tr>`).join("");
+    $relatedBox.innerHTML = `
+      <table>
+        <thead><tr><th>Category</th><th>Brand</th><th>Item Name</th><th>RRP</th><th>SKU</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  // Events
+  $type.addEventListener("change", refreshDropdowns);
+  $dept.addEventListener("change", refreshDropdowns);
+  $brand.addEventListener("change", refreshDropdowns);
+
+  document.getElementById("btnDropdown").addEventListener("click", async () => {
+    const v = $name.value.trim();
+    if (!v) return setMsg("Please select the product.");
+    await doSearch({ action: "dropdown", selected_item_name: v });
+  });
+
+  document.getElementById("btnResetDropdown").addEventListener("click", async () => {
+    $type.value = ""; $dept.value = ""; $brand.value = ""; $name.value = "";
+    await refreshDropdowns(); setMsg("");
+    $resultBox.textContent = "No selection yet."; $relatedBox.innerHTML = "";
+  });
+
+  document.getElementById("btnLink").addEventListener("click", async () => {
+    const url = document.getElementById("product_link").value.trim();
+    if (!url) return setMsg("Please paste a product link.");
+    await doSearch({ action: "link", product_link: url });
+  });
+  document.getElementById("btnResetLink").addEventListener("click", () => {
+    document.getElementById("product_link").value = ""; setMsg("");
+  });
+
+  document.getElementById("btnNumber").addEventListener("click", async () => {
+    const v = document.getElementById("product_number").value.trim();
+    if (!/^\d{8}$/.test(v)) return setMsg("Please enter an 8-digit product number.");
+    await doSearch({ action: "number", product_number: v });
+  });
+  document.getElementById("btnResetNumber").addEventListener("click", () => {
+    document.getElementById("product_number").value = ""; setMsg("");
+  });
+
+  document.getElementById("btnRefresh").addEventListener("click", async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/refresh`, { method: "POST" });
+      if (res.ok) { setMsg("Cache refreshed.", true); await refreshDropdowns(); }
+      else setMsg("Failed to refresh cache.");
+    } catch (e) { setMsg("Failed to refresh cache."); }
+  });
+
+  // init
+  refreshDropdowns();
+</script>
 </body>
 </html>
