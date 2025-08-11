@@ -10,21 +10,39 @@
     body{ font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:#222; margin:0; }
     header{ padding:16px 20px; border-bottom:1px solid var(--line); }
     h1{ margin:0; font-size:18px; }
+
     .wrap{ display:flex; gap:24px; padding:20px; max-width:1200px; margin:0 auto; }
     .left{ width:38%; max-width:520px; }
     .right{ flex:1; min-width:0; }
+
     fieldset{ border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; background:var(--card); }
     legend{ font-weight:600; padding:0 6px; }
     label{ display:block; font-weight:600; margin-top:8px; }
-    select,input[type="text"]{ width:100%; padding:12px; margin-top:6px; border:1px solid #ddd; border-radius:10px; font-size:16px; background:#fff; }
+
+    select,input[type="text"]{
+      width:100%; padding:12px; margin-top:6px; border:1px solid #ddd; border-radius:10px; font-size:16px; background:#fff;
+    }
     .row{ display:flex; gap:10px; flex-wrap:wrap; }
     button{ padding:12px 14px; border:0; border-radius:10px; background:var(--brand); color:#fff; cursor:pointer; font-size:16px; }
     button.secondary{ background:#e0e0e0; color:#222; }
     button:disabled{ opacity:.6; cursor:not-allowed; }
+
     .error{ color:#c62828; margin:8px 0; font-weight:600; }
     .ok{ color:#2e7d32; margin:8px 0; font-weight:600; }
     .muted{ color:var(--muted); font-size:12px; }
     .subhead{ font-weight:700; margin:4px 0 8px; }
+
+    /* Separators between search methods */
+    .divider{
+      display:flex; align-items:center; gap:10px; margin:12px 0 16px;
+    }
+    .divider::before,.divider::after{
+      content:""; height:1px; background:var(--line); flex:1;
+    }
+    .divider span{
+      font-size:12px; color:#888; text-transform:uppercase; letter-spacing:.08em;
+      background:transparent; padding:0 2px;
+    }
 
     /* Tables */
     .table-wrap{ width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
@@ -32,24 +50,43 @@
     th,td{ border-bottom:1px solid var(--line); text-align:left; padding:10px; }
     th{ background:#fafafa; }
 
+    /* Related as cards (mobile) */
+    .related-cards{ display:none; }
+    .card{
+      border:1px solid var(--line); border-radius:10px; padding:10px; background:#fff;
+    }
+    .card .title{ font-weight:600; margin-bottom:4px; }
+    .card .line{ color:var(--muted); font-size:13px; margin-top:2px; }
+    .card a{ font-weight:600; }
+
+    .section-gap{ height:10px; } /* “line break” before related header */
+
     /* Layout breakpoints */
     @media (max-width:900px){
       .wrap{ flex-direction:column; padding:12px; }
       .left{ width:100%; max-width:none; }
       table{ min-width:560px; }
     }
-    /* Stack table on very small screens */
+    /* Stack table on very small screens and show cards grid */
     @media (max-width:600px){
       .table-wrap{ overflow-x:visible; }
+      .related-table{ display:none; }
+      .related-cards{
+        display:grid; grid-template-columns:1fr 1fr; gap:10px;
+      }
+
+      #backToTop{ display:inline-flex; }
+
+      /* Optional: make the main table also more compact on tiny screens */
       table.responsive{ min-width:0; }
       table.responsive thead{ display:none; }
       table.responsive, table.responsive tbody, table.responsive tr, table.responsive td{ display:block; width:100%; }
       table.responsive tr{ border:1px solid var(--line); border-radius:10px; margin-bottom:10px; background:#fff; }
       table.responsive td{ display:flex; justify-content:space-between; gap:12px; padding:10px 12px; }
       table.responsive td::before{ content:attr(data-label); font-weight:600; }
-      #backToTop{ display:inline-flex; }
     }
-    /* Mobile-only floating button (hidden on desktop) */
+
+    /* Mobile-only floating button */
     #backToTop{
       position:fixed; right:16px; bottom:16px; padding:12px 14px;
       border-radius:999px; background:#000; color:#fff; border:0; display:none; z-index:999;
@@ -86,6 +123,8 @@
       </div>
     </fieldset>
 
+    <div class="divider"><span>or</span></div>
+
     <fieldset>
       <legend>Search by product page link</legend>
       <label for="product_link">URL</label>
@@ -95,6 +134,8 @@
         <button class="secondary" id="btnResetLink" type="button">Reset</button>
       </div>
     </fieldset>
+
+    <div class="divider"><span>or</span></div>
 
     <fieldset>
       <legend>Search by product number</legend>
@@ -113,6 +154,7 @@
     <fieldset id="results">
       <legend>Result</legend>
       <div id="resultBox" class="muted">No selection yet.</div>
+      <div class="section-gap"></div>
       <div id="relatedHeader" class="subhead" style="display:none;"></div>
       <div id="relatedBox"></div>
     </fieldset>
@@ -136,6 +178,12 @@
     const s = String(v).trim().toLowerCase();
     return s === "" || s === "nan" || s === "none" || s === "null";
   };
+
+  function formatHKD(v){
+    const n = Number(v);
+    if (Number.isFinite(n)) return "HK$" + n.toLocaleString("en-HK", { maximumFractionDigits: 0 });
+    return nanLike(v) ? "" : `HK$${v}`;
+  }
 
   async function fetchMeta(){
     const p = new URLSearchParams();
@@ -169,21 +217,22 @@
   }
 
   function fortressUrlFromSku(sku){
-    return sku && /^\d{8}$/.test(sku) ? `https://www.fortress.com.hk/${sku}` : "";
+    return sku && /^\d{8}$/.test(sku) ? `https://fortress.com.hk/p/${sku}` : "";
   }
 
   function renderMainResult(r){
-    // Header
+    // Prefer Item Name (retek) if backend supplies it
+    const displayName = r.item_name_retek ?? r["Item Name (retek)"] ?? r.item_name;
+
     let html = `<div class="subhead">You are currently searching for</div>`;
-    // Build rows, skip any with nan-like values
     const rows = [];
     const pushRow = (label, value) => { if(!nanLike(value)) rows.push(`<tr><th>${label}</th><td>${value}</td></tr>`); };
 
     pushRow("Category", r.department);
     pushRow("Brand", r.brand);
-    pushRow("Item Name", r.item_name);
+    pushRow("Item Name (retek)", displayName);
     pushRow("Type", r.type_label);
-    if(!nanLike(r.rrp)) pushRow("RRP", r.rrp);
+    if(!nanLike(r.rrp)) pushRow("RRP", formatHKD(r.rrp));
 
     const productUrl = fortressUrlFromSku(r.item);
     if(productUrl) pushRow("Product Link", `<a href="${productUrl}" target="_blank" rel="noopener">View</a>`);
@@ -193,9 +242,10 @@
   }
 
   function renderRelated(items, currentType){
-    // Filter out rows that have any nan-like critical fields
+    // Build a clean list (skip rows with nan in critical fields)
     const clean = items.filter(x=>{
-      const fields = [x.Department, x.Brand, x["Item Name"]];
+      const name = x["Item Name (retek)"] ?? x["Item Name"];
+      const fields = [x.Department, x.Brand, name];
       return !fields.some(nanLike);
     });
 
@@ -209,26 +259,43 @@
     $relatedHeader.textContent = headerText;
     $relatedHeader.style.display = "block";
 
+    // Table for desktop (shorter headers)
     const rows = clean.map(x=>{
+      const name = x["Item Name (retek)"] ?? x["Item Name"] ?? "";
       const url = fortressUrlFromSku(x.Item);
       const link = url ? `<a href="${url}" target="_blank" rel="noopener">View</a>` : "—";
       return `<tr>
         <td data-label="Category">${x.Department || ""}</td>
         <td data-label="Brand">${x.Brand || ""}</td>
-        <td data-label="Item Name">${x["Item Name"] || ""}</td>
-        <td data-label="RRP">${nanLike(x.RRP) ? "" : x.RRP}</td>
-        <td data-label="Product Link">${link}</td>
+        <td data-label="Name">${name}</td>
+        <td data-label="RRP">${formatHKD(x.RRP)}</td>
+        <td data-label="Link">${link}</td>
       </tr>`;
     }).join("");
 
+    // Cards for mobile (2 per row)
+    const cards = clean.map(x=>{
+      const name = x["Item Name (retek)"] ?? x["Item Name"] ?? "";
+      const url = fortressUrlFromSku(x.Item);
+      return `<div class="card">
+        <div class="title">${name}</div>
+        <div class="line">${x.Brand || ""} • ${x.Department || ""}</div>
+        ${!nanLike(x.RRP) ? `<div class="line">${formatHKD(x.RRP)}</div>` : ""}
+        ${url ? `<div class="line"><a href="${url}" target="_blank" rel="noopener">View</a></div>` : ""}
+      </div>`;
+    }).join("");
+
     $relatedBox.innerHTML = `
-      <div class="table-wrap">
+      <div class="table-wrap related-table">
         <table class="responsive">
           <thead>
-            <tr><th>Category</th><th>Brand</th><th>Item Name</th><th>RRP</th><th>Product Link</th></tr>
+            <tr><th>Category</th><th>Brand</th><th>Name</th><th>RRP</th><th>Link</th></tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
+      </div>
+      <div class="related-cards">
+        ${cards}
       </div>`;
   }
 
