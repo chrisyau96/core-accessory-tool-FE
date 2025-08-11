@@ -33,57 +33,40 @@
     .subhead{ font-weight:700; margin:4px 0 8px; }
 
     /* Separators between search methods */
-    .divider{
-      display:flex; align-items:center; gap:10px; margin:12px 0 16px;
-    }
-    .divider::before,.divider::after{
-      content:""; height:1px; background:var(--line); flex:1;
-    }
-    .divider span{
-      font-size:12px; color:#888; text-transform:uppercase; letter-spacing:.08em;
-      background:transparent; padding:0 2px;
-    }
+    .divider{ display:flex; align-items:center; gap:10px; margin:12px 0 16px; }
+    .divider::before,.divider::after{ content:""; height:1px; background:var(--line); flex:1; }
+    .divider span{ font-size:12px; color:#888; text-transform:uppercase; letter-spacing:.08em; background:transparent; padding:0 2px; }
 
     /* Tables */
-    .table-wrap{ width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-    table{ width:100%; border-collapse:collapse; margin-top:10px; background:#fff; min-width:640px; }
+    .table-wrap{ width:100%; overflow-x:visible; } /* no horizontal scroll on mobile */
+    table{ width:100%; border-collapse:collapse; margin-top:10px; background:#fff; min-width:0; }
     th,td{ border-bottom:1px solid var(--line); text-align:left; padding:10px; }
     th{ background:#fafafa; }
 
+    /* Main result table columns on mobile: 30% / 70% */
+    .result-table td.label{ width:30%; max-width:30%; vertical-align:top; color:#555; font-weight:600; }
+    .result-table td.value{ width:70%; max-width:70%; vertical-align:top; word-break:break-word; overflow-wrap:anywhere; }
+
     /* Related as cards (mobile) */
     .related-cards{ display:none; }
-    .card{
-      border:1px solid var(--line); border-radius:10px; padding:10px; background:#fff;
-    }
-    .card .title{ font-weight:600; margin-bottom:4px; }
-    .card .line{ color:var(--muted); font-size:13px; margin-top:2px; }
+    .card{ border:1px solid var(--line); border-radius:10px; padding:10px; background:#fff; }
+    .card .title{ font-weight:700; margin-bottom:6px; }
+    .card .line{ color:#333; font-size:14px; margin-top:4px; }
+    .card .muted{ color:var(--muted); font-size:12px; margin-top:4px; }
     .card a{ font-weight:600; }
 
-    .section-gap{ height:10px; } /* “line break” before related header */
+    .section-gap{ height:10px; } /* visual break before related header */
 
     /* Layout breakpoints */
     @media (max-width:900px){
       .wrap{ flex-direction:column; padding:12px; }
       .left{ width:100%; max-width:none; }
-      table{ min-width:560px; }
     }
-    /* Stack table on very small screens and show cards grid */
+    /* Mobile: show 2-column cards; main table already 100% width */
     @media (max-width:600px){
-      .table-wrap{ overflow-x:visible; }
       .related-table{ display:none; }
-      .related-cards{
-        display:grid; grid-template-columns:1fr 1fr; gap:10px;
-      }
-
+      .related-cards{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
       #backToTop{ display:inline-flex; }
-
-      /* Optional: make the main table also more compact on tiny screens */
-      table.responsive{ min-width:0; }
-      table.responsive thead{ display:none; }
-      table.responsive, table.responsive tbody, table.responsive tr, table.responsive td{ display:block; width:100%; }
-      table.responsive tr{ border:1px solid var(--line); border-radius:10px; margin-bottom:10px; background:#fff; }
-      table.responsive td{ display:flex; justify-content:space-between; gap:12px; padding:10px 12px; }
-      table.responsive td::before{ content:attr(data-label); font-weight:600; }
     }
 
     /* Mobile-only floating button */
@@ -221,12 +204,13 @@
   }
 
   function renderMainResult(r){
-    // Prefer Item Name (retek) if backend supplies it
     const displayName = r.item_name_retek ?? r["Item Name (retek)"] ?? r.item_name;
 
     let html = `<div class="subhead">You are currently searching for</div>`;
     const rows = [];
-    const pushRow = (label, value) => { if(!nanLike(value)) rows.push(`<tr><th>${label}</th><td>${value}</td></tr>`); };
+    const pushRow = (label, value) => {
+      if(!nanLike(value)) rows.push(`<tr><td class="label">${label}</td><td class="value">${value}</td></tr>`);
+    };
 
     pushRow("Category", r.department);
     pushRow("Brand", r.brand);
@@ -237,15 +221,14 @@
     const productUrl = fortressUrlFromSku(r.item);
     if(productUrl) pushRow("Product Link", `<a href="${productUrl}" target="_blank" rel="noopener">View</a>`);
 
-    html += `<div class="table-wrap"><table><tbody>${rows.join("") || `<tr><td class="muted">No details available.</td></tr>`}</tbody></table></div>`;
+    html += `<div class="table-wrap"><table class="result-table"><tbody>${rows.join("") || `<tr><td class="value muted">No details available.</td></tr>`}</tbody></table></div>`;
     $resultBox.innerHTML = html;
   }
 
   function renderRelated(items, currentType){
-    // Build a clean list (skip rows with nan in critical fields)
     const clean = items.filter(x=>{
       const name = x["Item Name (retek)"] ?? x["Item Name"];
-      const fields = [x.Department, x.Brand, name];
+      const fields = [x.Brand, x.Department, name];
       return !fields.some(nanLike);
     });
 
@@ -259,27 +242,34 @@
     $relatedHeader.textContent = headerText;
     $relatedHeader.style.display = "block";
 
-    // Table for desktop (shorter headers)
+    /* Desktop table (short labels) */
     const rows = clean.map(x=>{
       const name = x["Item Name (retek)"] ?? x["Item Name"] ?? "";
       const url = fortressUrlFromSku(x.Item);
       const link = url ? `<a href="${url}" target="_blank" rel="noopener">View</a>` : "—";
       return `<tr>
-        <td data-label="Category">${x.Department || ""}</td>
-        <td data-label="Brand">${x.Brand || ""}</td>
-        <td data-label="Name">${name}</td>
-        <td data-label="RRP">${formatHKD(x.RRP)}</td>
-        <td data-label="Link">${link}</td>
+        <td>${x.Brand || ""}</td>
+        <td>${x.Department || ""}</td>
+        <td>${name}</td>
+        <td>${formatHKD(x.RRP)}</td>
+        <td>${link}</td>
       </tr>`;
     }).join("");
 
-    // Cards for mobile (2 per row)
+    /* Mobile cards (2 per row): 
+       Row1: Name
+       Row2: Brand: ...
+       Row3: Category: ...
+       Row4: HK$...
+       Row5: View (link)
+    */
     const cards = clean.map(x=>{
       const name = x["Item Name (retek)"] ?? x["Item Name"] ?? "";
       const url = fortressUrlFromSku(x.Item);
       return `<div class="card">
         <div class="title">${name}</div>
-        <div class="line">${x.Brand || ""} • ${x.Department || ""}</div>
+        <div class="line">Brand: ${x.Brand || ""}</div>
+        <div class="line">Category: ${x.Department || ""}</div>
         ${!nanLike(x.RRP) ? `<div class="line">${formatHKD(x.RRP)}</div>` : ""}
         ${url ? `<div class="line"><a href="${url}" target="_blank" rel="noopener">View</a></div>` : ""}
       </div>`;
@@ -287,10 +277,8 @@
 
     $relatedBox.innerHTML = `
       <div class="table-wrap related-table">
-        <table class="responsive">
-          <thead>
-            <tr><th>Category</th><th>Brand</th><th>Name</th><th>RRP</th><th>Link</th></tr>
-          </thead>
+        <table>
+          <thead><tr><th>Brand</th><th>Category</th><th>Name</th><th>Price</th><th>Link</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -310,7 +298,6 @@
       renderMainResult(data.result);
       renderRelated(data.related_items||[], data.result.type_label);
 
-      // After search on mobile, scroll to results and show Back-to-Top
       if (isMobile()){
         document.getElementById("results").scrollIntoView({behavior:"smooth", block:"start"});
         $backTop.style.display = "inline-flex";
@@ -324,11 +311,13 @@
   $brand.addEventListener("change", refreshDropdowns);
 
   document.getElementById("btnDropdown").addEventListener("click", async ()=>{
-    const v = $name.value.trim(); if(!v) return setMsg("Please select the product.");
+    const v = document.getElementById("item_name").value.trim();
+    if(!v) return setMsg("Please select the product.");
     await doSearch({ action:"dropdown", selected_item_name:v });
   });
   document.getElementById("btnResetDropdown").addEventListener("click", async ()=>{
-    $type.value=""; $dept.value=""; $brand.value=""; $name.value="";
+    document.getElementById("type").value=""; document.getElementById("department").value="";
+    document.getElementById("brand").value=""; document.getElementById("item_name").value="";
     await refreshDropdowns(); setMsg(""); $resultBox.textContent="No selection yet."; $relatedBox.innerHTML=""; $relatedHeader.style.display="none";
     $backTop.style.display = "none";
   });
@@ -351,7 +340,7 @@
     document.getElementById("product_number").value=""; setMsg("");
   });
 
-  $backTop.addEventListener("click", ()=>{ window.scrollTo({top:0, behavior:"smooth"}); });
+  document.getElementById("backToTop").addEventListener("click", ()=>{ window.scrollTo({top:0, behavior:"smooth"}); });
 
   // init
   refreshDropdowns();
