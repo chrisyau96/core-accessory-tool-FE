@@ -32,22 +32,18 @@
     .muted{ color:var(--muted); font-size:12px; }
     .subhead{ font-weight:700; margin:4px 0 8px; }
 
-    /* Separators between search methods */
     .divider{ display:flex; align-items:center; gap:10px; margin:12px 0 16px; }
     .divider::before,.divider::after{ content:""; height:1px; background:var(--line); flex:1; }
-    .divider span{ font-size:12px; color:#888; text-transform:uppercase; letter-spacing:.08em; background:transparent; padding:0 2px; }
+    .divider span{ font-size:12px; color:#888; text-transform:uppercase; letter-spacing:.08em; padding:0 2px; }
 
-    /* Tables */
-    .table-wrap{ width:100%; overflow-x:visible; } /* no horizontal scroll on mobile */
+    .table-wrap{ width:100%; overflow-x:visible; }
     table{ width:100%; border-collapse:collapse; margin-top:10px; background:#fff; min-width:0; }
     th,td{ border-bottom:1px solid var(--line); text-align:left; padding:10px; }
     th{ background:#fafafa; }
 
-    /* Main result table columns on mobile: 30% / 70% */
     .result-table td.label{ width:30%; max-width:30%; vertical-align:top; color:#555; font-weight:600; }
     .result-table td.value{ width:70%; max-width:70%; vertical-align:top; word-break:break-word; overflow-wrap:anywhere; }
 
-    /* Related as cards (mobile) */
     .related-cards{ display:none; }
     .card{ border:1px solid var(--line); border-radius:10px; padding:10px; background:#fff; }
     .card .title{ font-weight:700; margin-bottom:6px; }
@@ -55,21 +51,18 @@
     .card .muted{ color:var(--muted); font-size:12px; margin-top:4px; }
     .card a{ font-weight:600; }
 
-    .section-gap{ height:10px; } /* visual break before related header */
+    .section-gap{ height:10px; }
 
-    /* Layout breakpoints */
     @media (max-width:900px){
       .wrap{ flex-direction:column; padding:12px; }
       .left{ width:100%; max-width:none; }
     }
-    /* Mobile: show 2-column cards; main table already 100% width */
     @media (max-width:600px){
       .related-table{ display:none; }
       .related-cards{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
       #backToTop{ display:inline-flex; }
     }
 
-    /* Mobile-only floating button */
     #backToTop{
       position:fixed; right:16px; bottom:16px; padding:12px 14px;
       border-radius:999px; background:#000; color:#fff; border:0; display:none; z-index:999;
@@ -97,7 +90,7 @@
       <label for="brand">Brand</label>
       <select id="brand"><option value="">— Select Brand —</option></select>
 
-      <label for="item_name">Item Name</label>
+      <label for="item_name">Item name</label>
       <select id="item_name"><option value="">— Select Item —</option></select>
 
       <div class="row" style="margin-top:12px">
@@ -156,6 +149,16 @@
   const isMobile = ()=> window.innerWidth <= 900;
   const setMsg=(t,ok=false)=>{ $msg.innerHTML = t ? `<div class="${ok?"ok":"error"}">${t}</div>` : ""; };
 
+  // Escape dynamic text to avoid XSS if spreadsheet contains HTML
+  function esc(s){
+    return String(s)
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&#39;");
+  }
+
   const nanLike = (v)=>{
     if (v === null || v === undefined) return true;
     const s = String(v).trim().toLowerCase();
@@ -165,7 +168,7 @@
   function formatHKD(v){
     const n = Number(v);
     if (Number.isFinite(n)) return "HK$" + n.toLocaleString("en-HK", { maximumFractionDigits: 0 });
-    return nanLike(v) ? "" : `HK$${v}`;
+    return nanLike(v) ? "" : `HK$${esc(v)}`;
   }
 
   async function fetchMeta(){
@@ -173,7 +176,9 @@
     if ($type.value) p.set("type",$type.value);
     if ($dept.value) p.set("department",$dept.value);
     if ($brand.value) p.set("brand",$brand.value);
-    const res = await fetch(`${API_BASE}/api/meta?`+p.toString());
+    const res = await fetch(`${API_BASE}/api/meta?`+p.toString(), { headers: { "X-Requested-With": "core-accessory-tool" }});
+    if(res.status === 429){ setMsg("Too many requests. Please try again shortly."); return {types:[],departments:[],brands:[],item_names:[]}; }
+    if(res.status === 403){ setMsg("This page is not allowed to call the API (origin blocked)."); return {types:[],departments:[],brands:[],item_names:[]}; }
     if(!res.ok) throw new Error("meta failed");
     return res.json();
   }
@@ -195,7 +200,15 @@
       fillSelect($type, meta.types, t=> t==="A"?"Accessory":"Core Item", t=>t, true);
       fillSelect($dept, meta.departments, d=>d, d=>d, true);
       fillSelect($brand, meta.brands, b=>b, b=>b, true);
-      fillSelect($name, meta.item_names, n=>n, n=>n);
+
+      if (meta.item_names && meta.item_names.length){
+        fillSelect($name, meta.item_names, n=>n, n=>n);
+      } else {
+        $name.innerHTML = "";
+        const o=document.createElement("option");
+        o.value=""; o.textContent="— Select Type, Category & Brand first —";
+        $name.appendChild(o);
+      }
     }catch(e){ setMsg("Failed to load dropdowns. Please retry."); console.error(e); }
   }
 
@@ -208,18 +221,20 @@
 
     let html = `<div class="subhead">You are currently searching for</div>`;
     const rows = [];
-    const pushRow = (label, value) => {
-      if(!nanLike(value)) rows.push(`<tr><td class="label">${label}</td><td class="value">${value}</td></tr>`);
+    const pushRow = (label, value, isHTML=false) => {
+      if(!nanLike(value)) rows.push(
+        `<tr><td class="label">${esc(label)}</td><td class="value">${isHTML ? value : esc(value)}</td></tr>`
+      );
     };
 
     pushRow("Category", r.department);
     pushRow("Brand", r.brand);
-    pushRow("Item Name", displayName);
+    pushRow("Item name", displayName);
     pushRow("Type", r.type_label);
-    if(!nanLike(r.rrp)) pushRow("RRP", formatHKD(r.rrp));
+    if(!nanLike(r.rrp)) pushRow("RRP", formatHKD(r.rrp), true);
 
     const productUrl = fortressUrlFromSku(r.item);
-    if(productUrl) pushRow("Product Link", `<a href="${productUrl}" target="_blank" rel="noopener">View</a>`);
+    if(productUrl) pushRow("Product Link", `<a href="${productUrl}" target="_blank" rel="noopener">View</a>`, true);
 
     html += `<div class="table-wrap"><table class="result-table"><tbody>${rows.join("") || `<tr><td class="value muted">No details available.</td></tr>`}</tbody></table></div>`;
     $resultBox.innerHTML = html;
@@ -242,34 +257,28 @@
     $relatedHeader.textContent = headerText;
     $relatedHeader.style.display = "block";
 
-    /* Desktop table (short labels) */
+    // Desktop table
     const rows = clean.map(x=>{
       const name = x["Item Name (retek)"] ?? x["Item Name"] ?? "";
       const url = fortressUrlFromSku(x.Item);
       const link = url ? `<a href="${url}" target="_blank" rel="noopener">View</a>` : "—";
       return `<tr>
-        <td>${x.Brand || ""}</td>
-        <td>${x.Department || ""}</td>
-        <td>${name}</td>
+        <td>${esc(x.Brand || "")}</td>
+        <td>${esc(x.Department || "")}</td>
+        <td>${esc(name)}</td>
         <td>${formatHKD(x.RRP)}</td>
         <td>${link}</td>
       </tr>`;
     }).join("");
 
-    /* Mobile cards (2 per row): 
-       Row1: Name
-       Row2: Brand: ...
-       Row3: Category: ...
-       Row4: HK$...
-       Row5: View (link)
-    */
+    // Mobile cards (2 per row)
     const cards = clean.map(x=>{
       const name = x["Item Name (retek)"] ?? x["Item Name"] ?? "";
       const url = fortressUrlFromSku(x.Item);
       return `<div class="card">
-        <div class="title">${name}</div>
-        <div class="line">Brand: ${x.Brand || ""}</div>
-        <div class="line">Category: ${x.Department || ""}</div>
+        <div class="title">${esc(name)}</div>
+        <div class="line">Brand: ${esc(x.Brand || "")}</div>
+        <div class="line">Category: ${esc(x.Department || "")}</div>
         ${!nanLike(x.RRP) ? `<div class="line">${formatHKD(x.RRP)}</div>` : ""}
         ${url ? `<div class="line"><a href="${url}" target="_blank" rel="noopener">View</a></div>` : ""}
       </div>`;
@@ -278,7 +287,7 @@
     $relatedBox.innerHTML = `
       <div class="table-wrap related-table">
         <table>
-          <thead><tr><th>Brand</th><th>Category</th><th>Item Name</th><th>RRP</th><th>Link</th></tr></thead>
+          <thead><tr><th>Brand</th><th>Category</th><th>Item name</th><th>RRP</th><th>Link</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -291,8 +300,13 @@
     setMsg(""); $resultBox.textContent="Searching…"; $relatedBox.innerHTML=""; $relatedHeader.style.display="none";
     try{
       const res = await fetch(`${API_BASE}/api/search`, {
-        method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)
+        method:"POST",
+        headers:{"Content-Type":"application/json","X-Requested-With":"core-accessory-tool"},
+        body:JSON.stringify(payload)
       });
+      if(res.status === 429){ $resultBox.innerHTML=""; setMsg("Too many requests. Please try again later."); return; }
+      if(res.status === 403){ $resultBox.innerHTML=""; setMsg("This page is not allowed to call the API (origin blocked)."); return; }
+
       const data = await res.json();
       if(!res.ok){ $resultBox.innerHTML=""; setMsg(data.error||"Search failed."); return; }
       renderMainResult(data.result);
