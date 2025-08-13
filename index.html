@@ -19,9 +19,7 @@
     legend{ font-weight:600; padding:0 6px; }
     label{ display:block; font-weight:600; margin-top:8px; }
 
-    select,input[type="text"]{
-      width:100%; padding:12px; margin-top:6px; border:1px solid #ddd; border-radius:10px; font-size:16px; background:#fff;
-    }
+    select,input[type="text"]{ width:100%; padding:12px; margin-top:6px; border:1px solid #ddd; border-radius:10px; font-size:16px; background:#fff; }
     .row{ display:flex; gap:10px; flex-wrap:wrap; }
     button{ padding:12px 14px; border:0; border-radius:10px; background:var(--brand); color:#fff; cursor:pointer; font-size:16px; }
     button.secondary{ background:#e0e0e0; color:#222; }
@@ -149,14 +147,10 @@
   const isMobile = ()=> window.innerWidth <= 900;
   const setMsg=(t,ok=false)=>{ $msg.innerHTML = t ? `<div class="${ok?"ok":"error"}">${t}</div>` : ""; };
 
-  // Escape dynamic text to avoid XSS if spreadsheet contains HTML
+  // Escape to prevent XSS if spreadsheet contains HTML-like text
   function esc(s){
-    return String(s)
-      .replace(/&/g,"&amp;")
-      .replace(/</g,"&lt;")
-      .replace(/>/g,"&gt;")
-      .replace(/"/g,"&quot;")
-      .replace(/'/g,"&#39;");
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+                    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
   }
 
   const nanLike = (v)=>{
