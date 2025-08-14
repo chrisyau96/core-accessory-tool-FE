@@ -28,6 +28,7 @@
     .error{ color:#c62828; margin:8px 0; font-weight:600; }
     .ok{ color:#2e7d32; margin:8px 0; font-weight:600; }
     .muted{ color:var(--muted); font-size:12px; }
+    .note-unavailable{ color:var(--muted); font-style:italic; }
     .subhead{ font-weight:700; margin:4px 0 8px; }
 
     .divider{ display:flex; align-items:center; gap:10px; margin:12px 0 16px; }
@@ -57,6 +58,7 @@
     }
     .suggestions div{ padding:10px 12px; cursor:pointer; }
     .suggestions div:hover, .suggestions div.active{ background:#f6f6f6; }
+    .suggestions .nohit{ color:var(--muted); cursor:default; }
 
     .section-gap{ height:10px; }
 
@@ -86,7 +88,7 @@
 
 <div class="wrap">
   <div class="left">
-    <!-- Dropdown stepper -->
+    <!-- 1) Search by dropdown -->
     <fieldset>
       <legend>Search by dropdown</legend>
 
@@ -111,21 +113,7 @@
 
     <div class="divider"><span>or</span></div>
 
-    <!-- Link search -->
-    <fieldset>
-      <legend>Search by product page link</legend>
-      <label for="product_link">URL</label>
-      <input id="product_link" type="text" placeholder="" />
-      <div class="row" style="margin-top:12px">
-        <button id="btnLink">Search</button>
-        <button class="secondary" id="btnResetLink" type="button">Reset</button>
-      </div>
-      <div id="msgLink"></div>
-    </fieldset>
-
-    <div class="divider"><span>or</span></div>
-
-    <!-- Name search (autocomplete) -->
+    <!-- 2) Search by product name (moved above link search) -->
     <fieldset>
       <legend>Search by product name</legend>
       <label for="product_name">Enter keywords</label>
@@ -138,6 +126,20 @@
         <button class="secondary" id="btnResetName" type="button">Reset</button>
       </div>
       <div id="msgName"></div>
+    </fieldset>
+
+    <div class="divider"><span>or</span></div>
+
+    <!-- 3) Search by product page link (now last) -->
+    <fieldset>
+      <legend>Search by product page link</legend>
+      <label for="product_link">URL</label>
+      <input id="product_link" type="text" placeholder="" />
+      <div class="row" style="margin-top:12px">
+        <button id="btnLink">Search</button>
+        <button class="secondary" id="btnResetLink" type="button">Reset</button>
+      </div>
+      <div id="msgLink"></div>
     </fieldset>
   </div>
 
@@ -260,7 +262,7 @@
       const productUrl = fortressUrlFromSku(r.item);
       if(productUrl) pushRow("Product Link", `<a href="${productUrl}" target="_blank" rel="noopener">View</a>`, true);
     } else {
-      pushRow("Product Link", "This item is no longer available.");
+      pushRow("Product Link", `<span class="note-unavailable">This item is no longer available.</span>`, true);
     }
 
     html += `<div class="table-wrap"><table class="result-table"><tbody>${rows.join("") || `<tr><td class="value muted">No details available.</td></tr>`}</tbody></table></div>`;
@@ -290,7 +292,7 @@
       const url = fortressUrlFromSku(x.Item);
       let linkCell = "—";
       if (Number(x["Allow To Buy"]) === 1 && url) linkCell = `<a href="${url}" target="_blank" rel="noopener">View</a>`;
-      if (Number(x["Allow To Buy"]) !== 1) linkCell = "This item is no longer available.";
+      if (Number(x["Allow To Buy"]) !== 1) linkCell = `<span class="note-unavailable">This item is no longer available.</span>`;
       return `<tr>
         <td>${esc(x.Brand || "")}</td>
         <td>${esc(x.Department || "")}</td>
@@ -306,7 +308,7 @@
       const url = fortressUrlFromSku(x.Item);
       let tail = "";
       if (Number(x["Allow To Buy"]) === 1 && url) tail = `<div class="line"><a href="${url}" target="_blank" rel="noopener">View</a></div>`;
-      if (Number(x["Allow To Buy"]) !== 1) tail = `<div class="line">This item is no longer available.</div>`;
+      if (Number(x["Allow To Buy"]) !== 1) tail = `<div class="line note-unavailable">This item is no longer available.</div>`;
       return `<div class="card">
         <div class="title">${esc(name)}</div>
         <div class="line">Brand: ${esc(x.Brand || "")}</div>
@@ -417,15 +419,20 @@
     if (!res.ok) return { suggestions: [] };
     return res.json();
   }
-  function renderSuggestions(list){
-    if (!list || !list.length){ $suggestions.style.display="none"; $suggestions.innerHTML=""; return; }
+  function renderSuggestions(list, q){
+    if (!q) { $suggestions.style.display="none"; $suggestions.innerHTML=""; return; }
+    if (!list || !list.length){
+      $suggestions.innerHTML = `<div class="nohit">No item(s) found. Try fewer keywords or ‘select by dropdown’.</div>`;
+      $suggestions.style.display="block";
+      return;
+    }
     $suggestions.innerHTML = list.map(n=>`<div data-name="${n.replace(/"/g,"&quot;")}">${esc(n)}</div>`).join("");
     $suggestions.style.display="block";
   }
 
   $suggestions.addEventListener("click", (e)=>{
     const div = e.target.closest("div[data-name]");
-    if(!div) return;
+    if(!div) return; // ignore clicks on "nohit"
     selectedName = div.getAttribute("data-name");
     $productName.value = selectedName;
     $suggestions.style.display="none";
@@ -440,8 +447,8 @@
     suggestTimer = setTimeout(async ()=>{
       try{
         const data = await fetchSuggestions(q);
-        renderSuggestions(data.suggestions || []);
-      }catch{ renderSuggestions([]); }
+        renderSuggestions(data.suggestions || [], q);
+      }catch{ renderSuggestions([], q); }
     }, 200);
   });
 
