@@ -46,8 +46,17 @@
     .card{ border:1px solid var(--line); border-radius:10px; padding:10px; background:#fff; }
     .card .title{ font-weight:700; margin-bottom:6px; }
     .card .line{ color:#333; font-size:14px; margin-top:4px; }
-    .card .muted{ color:var(--muted); font-size:12px; margin-top:4px; }
     .card a{ font-weight:600; }
+
+    /* Autocomplete dropdown */
+    .suggestbox{ position:relative; }
+    .suggestions{
+      position:absolute; left:0; right:0; top:100%; z-index:50;
+      background:#fff; border:1px solid #ddd; border-radius:8px;
+      max-height:260px; overflow:auto; margin-top:4px; box-shadow:0 8px 24px rgba(0,0,0,.08);
+    }
+    .suggestions div{ padding:10px 12px; cursor:pointer; }
+    .suggestions div:hover, .suggestions div.active{ background:#f6f6f6; }
 
     .section-gap{ height:10px; }
 
@@ -77,28 +86,32 @@
 
 <div class="wrap">
   <div class="left">
+    <!-- Dropdown stepper -->
     <fieldset>
       <legend>Search by dropdown</legend>
+
       <label for="type">Type</label>
       <select id="type"><option value="">— Select Type —</option></select>
 
       <label for="department">Category</label>
-      <select id="department"><option value="">— Select Category —</option></select>
+      <select id="department" disabled><option value="">— Select Category —</option></select>
 
       <label for="brand">Brand</label>
-      <select id="brand"><option value="">— Select Brand —</option></select>
+      <select id="brand" disabled><option value="">— Select Brand —</option></select>
 
       <label for="item_name">Item name</label>
-      <select id="item_name"><option value="">— Select Item —</option></select>
+      <select id="item_name" disabled><option value="">— Select Item —</option></select>
 
       <div class="row" style="margin-top:12px">
         <button id="btnDropdown">Search</button>
         <button class="secondary" id="btnResetDropdown" type="button">Reset</button>
       </div>
+      <div id="msgDropdown"></div>
     </fieldset>
 
     <div class="divider"><span>or</span></div>
 
+    <!-- Link search -->
     <fieldset>
       <legend>Search by product page link</legend>
       <label for="product_link">URL</label>
@@ -107,21 +120,25 @@
         <button id="btnLink">Search</button>
         <button class="secondary" id="btnResetLink" type="button">Reset</button>
       </div>
+      <div id="msgLink"></div>
     </fieldset>
 
     <div class="divider"><span>or</span></div>
 
+    <!-- Name search (autocomplete) -->
     <fieldset>
-      <legend>Search by product number</legend>
-      <label for="product_number">SKU</label>
-      <input id="product_number" type="text" placeholder="e.g. 12345678" maxlength="8" />
-      <div class="row" style="margin-top:12px">
-        <button id="btnNumber">Search</button>
-        <button class="secondary" id="btnResetNumber" type="button">Reset</button>
+      <legend>Search by product name</legend>
+      <label for="product_name">Enter keywords</label>
+      <div class="suggestbox">
+        <input id="product_name" type="text" autocomplete="off" placeholder="e.g. Dyson HS08" />
+        <div id="name_suggestions" class="suggestions" style="display:none;"></div>
       </div>
+      <div class="row" style="margin-top:12px">
+        <button id="btnName">Search</button>
+        <button class="secondary" id="btnResetName" type="button">Reset</button>
+      </div>
+      <div id="msgName"></div>
     </fieldset>
-
-    <div id="msg"></div>
   </div>
 
   <div class="right">
@@ -140,12 +157,22 @@
 <script>
   const API_BASE = window.API_BASE;
   const el = (id)=>document.getElementById(id);
+
+  // Dropdown els
   const $type=el("type"), $dept=el("department"), $brand=el("brand"), $name=el("item_name");
-  const $msg=el("msg"), $resultBox=el("resultBox"), $relatedBox=el("relatedBox"), $relatedHeader=el("relatedHeader");
+  const $msgDropdown=el("msgDropdown"), $msgLink=el("msgLink"), $msgName=el("msgName");
+
+  // Result els
+  const $resultBox=el("resultBox"), $relatedBox=el("relatedBox"), $relatedHeader=el("relatedHeader");
   const $backTop = el("backToTop");
 
+  // Name search els/state
+  const $productName = el("product_name");
+  const $suggestions = el("name_suggestions");
+  let selectedName = ""; // must be set by clicking a suggestion
+
   const isMobile = ()=> window.innerWidth <= 900;
-  const setMsg=(t,ok=false)=>{ $msg.innerHTML = t ? `<div class="${ok?"ok":"error"}">${t}</div>` : ""; };
+  const setMsg=(node,t,ok=false)=>{ node.innerHTML = t ? `<div class="${ok?"ok":"error"}">${t}</div>` : ""; };
 
   // Escape to prevent XSS if spreadsheet contains HTML-like text
   function esc(s){
@@ -171,8 +198,6 @@
     if ($dept.value) p.set("department",$dept.value);
     if ($brand.value) p.set("brand",$brand.value);
     const res = await fetch(`${API_BASE}/api/meta?`+p.toString(), { headers: { "X-Requested-With": "core-accessory-tool" }});
-    if(res.status === 429){ setMsg("Too many requests. Please try again shortly."); return {types:[],departments:[],brands:[],item_names:[]}; }
-    if(res.status === 403){ setMsg("This page is not allowed to call the API (origin blocked)."); return {types:[],departments:[],brands:[],item_names:[]}; }
     if(!res.ok) throw new Error("meta failed");
     return res.json();
   }
@@ -191,19 +216,22 @@
   async function refreshDropdowns(){
     try{
       const meta = await fetchMeta();
+      // Always refresh types
       fillSelect($type, meta.types, t=> t==="A"?"Accessory":"Core Item", t=>t, true);
-      fillSelect($dept, meta.departments, d=>d, d=>d, true);
-      fillSelect($brand, meta.brands, b=>b, b=>b, true);
 
-      if (meta.item_names && meta.item_names.length){
-        fillSelect($name, meta.item_names, n=>n, n=>n);
-      } else {
-        $name.innerHTML = "";
-        const o=document.createElement("option");
-        o.value=""; o.textContent="— Select Type, Category & Brand first —";
-        $name.appendChild(o);
+      // Only populate following selects if they are enabled/allowed by the step
+      if (!$dept.disabled) fillSelect($dept, meta.departments, d=>d, d=>d, true);
+      if (!$brand.disabled) fillSelect($brand, meta.brands, b=>b, b=>b, true);
+
+      if (!$name.disabled) {
+        if (meta.item_names && meta.item_names.length){
+          fillSelect($name, meta.item_names, n=>n, n=>n);
+        } else {
+          $name.innerHTML = "";
+          const o=document.createElement("option"); o.value=""; o.textContent="— No items —"; $name.appendChild(o);
+        }
       }
-    }catch(e){ setMsg("Failed to load dropdowns. Please retry."); console.error(e); }
+    }catch(e){ setMsg($msgDropdown,"Failed to load dropdowns. Please retry."); console.error(e); }
   }
 
   function fortressUrlFromSku(sku){
@@ -227,8 +255,13 @@
     pushRow("Type", r.type_label);
     if(!nanLike(r.rrp)) pushRow("RRP", formatHKD(r.rrp), true);
 
-    const productUrl = fortressUrlFromSku(r.item);
-    if(productUrl) pushRow("Product Link", `<a href="${productUrl}" target="_blank" rel="noopener">View</a>`, true);
+    // Product link with Allow To Buy
+    if (Number(r.allow_to_buy) === 1){
+      const productUrl = fortressUrlFromSku(r.item);
+      if(productUrl) pushRow("Product Link", `<a href="${productUrl}" target="_blank" rel="noopener">View</a>`, true);
+    } else {
+      pushRow("Product Link", "This item is no longer available.");
+    }
 
     html += `<div class="table-wrap"><table class="result-table"><tbody>${rows.join("") || `<tr><td class="value muted">No details available.</td></tr>`}</tbody></table></div>`;
     $resultBox.innerHTML = html;
@@ -255,13 +288,15 @@
     const rows = clean.map(x=>{
       const name = x["Item Name (retek)"] ?? x["Item Name"] ?? "";
       const url = fortressUrlFromSku(x.Item);
-      const link = url ? `<a href="${url}" target="_blank" rel="noopener">View</a>` : "—";
+      let linkCell = "—";
+      if (Number(x["Allow To Buy"]) === 1 && url) linkCell = `<a href="${url}" target="_blank" rel="noopener">View</a>`;
+      if (Number(x["Allow To Buy"]) !== 1) linkCell = "This item is no longer available.";
       return `<tr>
         <td>${esc(x.Brand || "")}</td>
         <td>${esc(x.Department || "")}</td>
         <td>${esc(name)}</td>
         <td>${formatHKD(x.RRP)}</td>
-        <td>${link}</td>
+        <td>${linkCell}</td>
       </tr>`;
     }).join("");
 
@@ -269,12 +304,15 @@
     const cards = clean.map(x=>{
       const name = x["Item Name (retek)"] ?? x["Item Name"] ?? "";
       const url = fortressUrlFromSku(x.Item);
+      let tail = "";
+      if (Number(x["Allow To Buy"]) === 1 && url) tail = `<div class="line"><a href="${url}" target="_blank" rel="noopener">View</a></div>`;
+      if (Number(x["Allow To Buy"]) !== 1) tail = `<div class="line">This item is no longer available.</div>`;
       return `<div class="card">
         <div class="title">${esc(name)}</div>
         <div class="line">Brand: ${esc(x.Brand || "")}</div>
         <div class="line">Category: ${esc(x.Department || "")}</div>
         ${!nanLike(x.RRP) ? `<div class="line">${formatHKD(x.RRP)}</div>` : ""}
-        ${url ? `<div class="line"><a href="${url}" target="_blank" rel="noopener">View</a></div>` : ""}
+        ${tail}
       </div>`;
     }).join("");
 
@@ -290,19 +328,47 @@
       </div>`;
   }
 
-  async function doSearch(payload){
-    setMsg(""); $resultBox.textContent="Searching…"; $relatedBox.innerHTML=""; $relatedHeader.style.display="none";
+  async function doSearch(payload, source){
+    // Clear messages
+    setMsg($msgDropdown,""); setMsg($msgLink,""); setMsg($msgName,"");
+
+    // Clear other sections when one starts a search
+    if (source === "dropdown"){
+      el("product_link").value = "";
+      $productName.value = ""; selectedName = ""; $suggestions.style.display="none"; $suggestions.innerHTML="";
+    } else if (source === "link"){
+      $type.value=""; $dept.value=""; $brand.value=""; $name.value="";
+      $type.disabled=false; $dept.disabled=true; $brand.disabled=true; $name.disabled=true;
+      el("item_name").innerHTML = "<option value=''>— Select Item —</option>";
+      el("department").innerHTML = "<option value=''>— Select Category —</option>";
+      el("brand").innerHTML = "<option value=''>— Select Brand —</option>";
+      refreshDropdowns();
+      $productName.value = ""; selectedName = ""; $suggestions.style.display="none"; $suggestions.innerHTML="";
+    } else if (source === "name"){
+      el("product_link").value = "";
+      $type.value=""; $dept.value=""; $brand.value=""; $name.value="";
+      $type.disabled=false; $dept.disabled=true; $brand.disabled=true; $name.disabled=true;
+      el("item_name").innerHTML = "<option value=''>— Select Item —</option>";
+      el("department").innerHTML = "<option value=''>— Select Category —</option>";
+      el("brand").innerHTML = "<option value=''>— Select Brand —</option>";
+      refreshDropdowns();
+    }
+
+    $resultBox.textContent="Searching…"; $relatedBox.innerHTML=""; $relatedHeader.style.display="none";
     try{
       const res = await fetch(`${API_BASE}/api/search`, {
         method:"POST",
         headers:{"Content-Type":"application/json","X-Requested-With":"core-accessory-tool"},
         body:JSON.stringify(payload)
       });
-      if(res.status === 429){ $resultBox.innerHTML=""; setMsg("Too many requests. Please try again later."); return; }
-      if(res.status === 403){ $resultBox.innerHTML=""; setMsg("This page is not allowed to call the API (origin blocked)."); return; }
-
       const data = await res.json();
-      if(!res.ok){ $resultBox.innerHTML=""; setMsg(data.error||"Search failed."); return; }
+      if(!res.ok){ $resultBox.innerHTML=""; 
+        const msg = data && data.error ? data.error : "Search failed.";
+        if (source==="dropdown") setMsg($msgDropdown, msg);
+        if (source==="link") setMsg($msgLink, msg);
+        if (source==="name") setMsg($msgName, msg);
+        return;
+      }
       renderMainResult(data.result);
       renderRelated(data.related_items||[], data.result.type_label);
 
@@ -310,42 +376,119 @@
         document.getElementById("results").scrollIntoView({behavior:"smooth", block:"start"});
         $backTop.style.display = "inline-flex";
       }
-    }catch(e){ $resultBox.innerHTML=""; setMsg("Can’t reach backend. Check API_BASE/CORS."); console.error(e); }
+    }catch(e){ 
+      $resultBox.innerHTML="";
+      const msg = "Can’t reach backend. Check API_BASE/CORS.";
+      if (source==="dropdown") setMsg($msgDropdown, msg);
+      if (source==="link") setMsg($msgLink, msg);
+      if (source==="name") setMsg($msgName, msg);
+      console.error(e);
+    }
   }
 
-  // Events
-  $type.addEventListener("change", refreshDropdowns);
-  $dept.addEventListener("change", refreshDropdowns);
-  $brand.addEventListener("change", refreshDropdowns);
+  // ───── Dropdown stepper behavior ─────
+  async function onTypeChange(){
+    if (!$type.value){ return; }
+    $type.disabled = true;          // lock
+    $dept.disabled = false;         // enable next
+    await refreshDropdowns();
+  }
+  async function onDeptChange(){
+    if (!$dept.value){ return; }
+    $dept.disabled = true;          // lock
+    $brand.disabled = false;        // enable next
+    await refreshDropdowns();
+  }
+  async function onBrandChange(){
+    if (!$brand.value){ return; }
+    $brand.disabled = true;         // lock
+    $name.disabled = false;         // enable next
+    await refreshDropdowns();
+  }
+  function onNameChange(){
+    if ($name.value){ $name.disabled = true; } // lock once chosen
+  }
+
+  // ───── Name search (autocomplete) ─────
+  let suggestTimer = null;
+  async function fetchSuggestions(q){
+    const p = new URLSearchParams({ q });
+    const res = await fetch(`${API_BASE}/api/suggest?`+p.toString(), { headers: { "X-Requested-With": "core-accessory-tool" }});
+    if (!res.ok) return { suggestions: [] };
+    return res.json();
+  }
+  function renderSuggestions(list){
+    if (!list || !list.length){ $suggestions.style.display="none"; $suggestions.innerHTML=""; return; }
+    $suggestions.innerHTML = list.map(n=>`<div data-name="${n.replace(/"/g,"&quot;")}">${esc(n)}</div>`).join("");
+    $suggestions.style.display="block";
+  }
+
+  $suggestions.addEventListener("click", (e)=>{
+    const div = e.target.closest("div[data-name]");
+    if(!div) return;
+    selectedName = div.getAttribute("data-name");
+    $productName.value = selectedName;
+    $suggestions.style.display="none";
+    $suggestions.innerHTML="";
+  });
+
+  $productName.addEventListener("input", ()=>{
+    selectedName = ""; // typing cancels selection
+    const q = $productName.value.trim();
+    if (suggestTimer) clearTimeout(suggestTimer);
+    if (!q){ $suggestions.style.display="none"; $suggestions.innerHTML=""; return; }
+    suggestTimer = setTimeout(async ()=>{
+      try{
+        const data = await fetchSuggestions(q);
+        renderSuggestions(data.suggestions || []);
+      }catch{ renderSuggestions([]); }
+    }, 200);
+  });
+
+  // ───── Events ─────
+  $type.addEventListener("change", onTypeChange);
+  $dept.addEventListener("change", onDeptChange);
+  $brand.addEventListener("change", onBrandChange);
+  $name.addEventListener("change", onNameChange);
 
   document.getElementById("btnDropdown").addEventListener("click", async ()=>{
-    const v = document.getElementById("item_name").value.trim();
-    if(!v) return setMsg("Please select the product.");
-    await doSearch({ action:"dropdown", selected_item_name:v });
+    setMsg($msgDropdown,"");
+    if(!$name.value) return setMsg($msgDropdown,"Please select the product.");
+    await doSearch({ action:"dropdown", selected_item_name:$name.value.trim() }, "dropdown");
   });
   document.getElementById("btnResetDropdown").addEventListener("click", async ()=>{
-    document.getElementById("type").value=""; document.getElementById("department").value="";
-    document.getElementById("brand").value=""; document.getElementById("item_name").value="";
-    await refreshDropdowns(); setMsg(""); $resultBox.textContent="No selection yet."; $relatedBox.innerHTML=""; $relatedHeader.style.display="none";
+    setMsg($msgDropdown,"");
+    $type.disabled=false; $dept.disabled=true; $brand.disabled=true; $name.disabled=true;
+    $type.value=""; $dept.value=""; $brand.value=""; $name.value="";
+    el("department").innerHTML = "<option value=''>— Select Category —</option>";
+    el("brand").innerHTML = "<option value=''>— Select Brand —</option>";
+    el("item_name").innerHTML = "<option value=''>— Select Item —</option>";
+    await refreshDropdowns();
+    $resultBox.textContent="No selection yet."; $relatedBox.innerHTML=""; $relatedHeader.style.display="none";
     $backTop.style.display = "none";
   });
 
   document.getElementById("btnLink").addEventListener("click", async ()=>{
+    setMsg($msgLink,"");
     const url = document.getElementById("product_link").value.trim();
-    if(!url) return setMsg("Please paste a product link.");
-    await doSearch({ action:"link", product_link:url });
+    if(!url) return setMsg($msgLink,"Please paste a product link.");
+    await doSearch({ action:"link", product_link:url }, "link");
   });
   document.getElementById("btnResetLink").addEventListener("click", ()=>{
-    document.getElementById("product_link").value=""; setMsg("");
+    setMsg($msgLink,"");
+    document.getElementById("product_link").value="";
   });
 
-  document.getElementById("btnNumber").addEventListener("click", async ()=>{
-    const v = document.getElementById("product_number").value.trim();
-    if(!/^\d{8}$/.test(v)) return setMsg("Please enter an 8-digit product number.");
-    await doSearch({ action:"number", product_number:v });
+  document.getElementById("btnName").addEventListener("click", async ()=>{
+    setMsg($msgName,"");
+    if (!selectedName || selectedName !== $productName.value.trim()){
+      return setMsg($msgName,"Please select an item from the suggestions list.");
+    }
+    await doSearch({ action:"dropdown", selected_item_name:selectedName }, "name");
   });
-  document.getElementById("btnResetNumber").addEventListener("click", ()=>{
-    document.getElementById("product_number").value=""; setMsg("");
+  document.getElementById("btnResetName").addEventListener("click", ()=>{
+    setMsg($msgName,"");
+    $productName.value = ""; selectedName=""; $suggestions.style.display="none"; $suggestions.innerHTML="";
   });
 
   document.getElementById("backToTop").addEventListener("click", ()=>{ window.scrollTo({top:0, behavior:"smooth"}); });
